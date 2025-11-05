@@ -1,0 +1,190 @@
+Table USUARIOS {
+  id_usuario int [primary key]
+  nombres varchar(100)
+  apellidos varchar(100)
+  correo varchar(150) [unique]
+  fecha_registro datetime
+  salario_base decimal(10,2)
+  estado bool
+  
+  // Auditoría
+  creado_por varchar(100)
+  modificado_por varchar(100)
+  creado_en timestamp
+  modificado_en timestamp
+}
+
+Table PRESUPUESTOS {
+  id_presupuesto int [primary key]
+  id_usuario int 
+  nombre varchar(100)
+  anio_inicio int
+  mes_inicio int
+  anio_fin int
+  mes_fin int
+  total_ingresos decimal(10,2)
+  total_gastos decimal(10,2)
+  total_ahorros decimal(10,2)
+  fecha_creacion datetime
+  estado varchar(20)
+
+  // Auditoría
+  creado_por varchar(100)
+  modificado_por varchar(100)
+  creado_en timestamp
+  modificado_en timestamp
+}
+
+Table CATEGORIAS {
+  id_categoria int [primary key]
+  nombre varchar(100)
+  descripcion text
+  tipo varchar(20)
+  nombre_icono text
+  color_hex varchar(10)
+  orden_presentacion int
+
+  // Auditoría
+  creado_por varchar(100)
+  modificado_por varchar(100)
+  creado_en timestamp
+  modificado_en timestamp
+}
+
+Table SUBCATEGORIAS {
+  id_subcategoria int [primary key]
+  id_categoria int 
+  nombre varchar(100)
+  descripcion text
+  activa bool
+  es_defecto bool
+
+  // Auditoría
+  creado_por varchar(100)
+  modificado_por varchar(100)
+  creado_en timestamp
+  modificado_en timestamp
+}
+
+Table PRESUPUESTO_DETALLE {
+  id_detalle int [primary key]
+  id_presupuesto int 
+  id_subcategoria int 
+  monto_mensual decimal(10,2)
+  observaciones text
+
+  // Auditoría
+  creado_por varchar(100)
+  modificado_por varchar(100)
+  creado_en timestamp
+  modificado_en timestamp
+}
+
+Table OBLIGACION_FIJA {
+  id_obligacion int [primary key]
+  id_usuario int 
+  id_subcategoria int 
+  nombre varchar(100)
+  descripcion text
+  monto_mensual decimal(10,2)
+  dia_vencimiento int
+  vigente boolean
+  fecha_inicio datetime
+  fecha_fin datetime
+
+  // Auditoría
+  creado_por varchar(100)
+  modificado_por varchar(100)
+  creado_en timestamp
+  modificado_en timestamp
+}
+
+Table TRANSACCIONES {
+  id_transaccion int [primary key]
+  id_usuario int 
+  id_presupuesto int 
+  id_subcategoria int 
+  id_obligacion int 
+  anio int
+  mes int
+  tipo varchar(20)
+  descripcion text
+  monto decimal(10,2)
+  fecha_movimiento datetime
+  metodo_pago varchar(30)
+  numero_factura varchar(50)
+  observaciones text
+  fecha_registro datetime
+
+  // Auditoría
+  creado_por varchar(100)
+  modificado_por varchar(100)
+  creado_en timestamp
+  modificado_en timestamp
+}
+
+Table META_AHORRO {
+  id_meta int [primary key]
+  id_usuario int 
+  id_subcategoria int 
+  nombre varchar(100)
+  descripcion text
+  monto_total decimal(10,2)
+  monto_ahorrado decimal(10,2)
+  fecha_inicio datetime
+  fecha_objetivo datetime
+  prioridad varchar(20)
+  estado varchar(20)
+
+  // Auditoría
+  creado_por varchar(100)
+  modificado_por varchar(100)
+  creado_en timestamp
+  modificado_en timestamp
+}
+
+Table ALERTA {
+  id_alerta int [primary key]
+  id_usuario int 
+  id_detalle_presupuesto int 
+  id_obligacion int 
+  tipo varchar(50)
+  titulo varchar(100)
+  mensaje text
+  prioridad varchar(20)
+  fecha_creacion datetime
+  visto bool
+  fecha_visto datetime
+
+  // Auditoría
+  creado_por varchar(100)
+  modificado_por varchar(100)
+  creado_en timestamp
+  modificado_en timestamp
+}
+
+Ref: USUARIOS.id_usuario < PRESUPUESTOS.id_usuario
+Ref: USUARIOS.id_usuario < OBLIGACION_FIJA.id_usuario
+Ref: USUARIOS.id_usuario < META_AHORRO.id_usuario
+Ref: USUARIOS.id_usuario < ALERTA.id_usuario
+Ref: USUARIOS.id_usuario < TRANSACCIONES.id_usuario
+
+Ref: CATEGORIAS.id_categoria < SUBCATEGORIAS.id_categoria
+
+Ref: SUBCATEGORIAS.id_subcategoria < PRESUPUESTO_DETALLE.id_subcategoria
+
+Ref: PRESUPUESTOS.id_presupuesto < PRESUPUESTO_DETALLE.id_presupuesto
+
+Ref: PRESUPUESTO_DETALLE.id_detalle < ALERTA.id_detalle_presupuesto
+
+Ref: SUBCATEGORIAS.id_subcategoria < TRANSACCIONES.id_subcategoria
+
+Ref: SUBCATEGORIAS.id_subcategoria < OBLIGACION_FIJA.id_subcategoria
+
+Ref: SUBCATEGORIAS.id_subcategoria - META_AHORRO.id_subcategoria 
+
+Ref: OBLIGACION_FIJA.id_obligacion < TRANSACCIONES.id_obligacion
+
+Ref: OBLIGACION_FIJA.id_obligacion < ALERTA.id_obligacion
+
+Ref: PRESUPUESTOS.id_presupuesto < TRANSACCIONES.id_presupuesto
