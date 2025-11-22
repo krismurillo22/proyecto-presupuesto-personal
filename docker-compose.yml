@@ -1,19 +1,19 @@
-version: "3"
 services:
-  backend:
-    build: ./backend
-    ports:
-      - "4000:4000"
+  db2:
+    image: ibmcom/db2:11.5.8.0
+    container_name: db2server
+    privileged: true
+    platform: linux/amd64
     environment:
-      - NODE_ENV=development
-    volumes:
-      - ./backend:/app
-    command: npm run dev
-
-  frontend:
-    build: ./frontend
+      LICENSE: accept
+      DB2INST1_PASSWORD: pass123
+      DBNAME: APPDB
     ports:
-      - "3000:3000"
+      - "50000:50000"
     volumes:
-      - ./frontend:/app
-    command: npm run dev
+      - ./init:/init
+      - db2data:/database
+    restart: unless-stopped
+
+volumes:
+  db2data:
