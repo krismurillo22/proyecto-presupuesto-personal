@@ -2,29 +2,29 @@
 CREATE SCHEMA PRESUPUESTO AUTHORIZATION DB2INST1;
 SET SCHEMA PRESUPUESTO;
 
-------------------------------------------------------------
 -- Tabla USUARIOS
-------------------------------------------------------------
 CREATE TABLE USUARIOS (
-    id_usuario INT NOT NULL PRIMARY KEY,
+    id_usuario INT NOT NULL 
+        GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     nombres VARCHAR(100),
     apellidos VARCHAR(100),
-    correo VARCHAR(150) NOT NULL,
+    correo VARCHAR(150) NOT NULL UNIQUE,
     fecha_registro TIMESTAMP,
     salario_base DECIMAL(10,2),
-    estado SMALLINT,
+    estado SMALLINT, -- 1 = activo, 0 = inactivo
+
+    -- Auditoría
     creado_por VARCHAR(100),
     modificado_por VARCHAR(100),
-    creado_en TIMESTAMP,
-    modificado_en TIMESTAMP,
-    UNIQUE (correo)
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    modificado_en TIMESTAMP
 );
 
-------------------------------------------------------------
+
 -- Tabla PRESUPUESTOS
-------------------------------------------------------------
 CREATE TABLE PRESUPUESTOS (
-    id_presupuesto INT NOT NULL PRIMARY KEY,
+    id_presupuesto INT NOT NULL 
+        GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     id_usuario INT,
     nombre VARCHAR(100),
     anio_inicio INT,
@@ -36,65 +36,73 @@ CREATE TABLE PRESUPUESTOS (
     total_ahorros DECIMAL(10,2),
     fecha_creacion TIMESTAMP,
     estado VARCHAR(20),
+
+    -- Auditoría
     creado_por VARCHAR(100),
     modificado_por VARCHAR(100),
-    creado_en TIMESTAMP,
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     modificado_en TIMESTAMP
 );
 
-------------------------------------------------------------
+
 -- Tabla CATEGORIAS
-------------------------------------------------------------
 CREATE TABLE CATEGORIAS (
-    id_categoria INT NOT NULL PRIMARY KEY,
+    id_categoria INT NOT NULL 
+        GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     nombre VARCHAR(100),
     descripcion CLOB,
     tipo VARCHAR(20),
     nombre_icono CLOB,
     color_hex VARCHAR(10),
     orden_presentacion INT,
+
+    -- Auditoría
     creado_por VARCHAR(100),
     modificado_por VARCHAR(100),
-    creado_en TIMESTAMP,
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     modificado_en TIMESTAMP
 );
 
-------------------------------------------------------------
+
 -- Tabla SUBCATEGORIAS
-------------------------------------------------------------
 CREATE TABLE SUBCATEGORIAS (
-    id_subcategoria INT NOT NULL PRIMARY KEY,
+    id_subcategoria INT NOT NULL 
+        GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     id_categoria INT,
     nombre VARCHAR(100),
     descripcion CLOB,
     activa SMALLINT,
     es_defecto SMALLINT,
+
+    -- Auditoría
     creado_por VARCHAR(100),
     modificado_por VARCHAR(100),
-    creado_en TIMESTAMP,
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     modificado_en TIMESTAMP
 );
 
-------------------------------------------------------------
+
 -- Tabla PRESUPUESTO_DETALLE
-------------------------------------------------------------
 CREATE TABLE PRESUPUESTO_DETALLE (
-    id_detalle INT NOT NULL PRIMARY KEY,
+    id_detalle INT NOT NULL 
+        GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     id_presupuesto INT,
     id_subcategoria INT,
     monto_mensual DECIMAL(10,2),
     observaciones CLOB,
+
+    -- Auditoría
     creado_por VARCHAR(100),
     modificado_por VARCHAR(100),
-    creado_en TIMESTAMP,
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     modificado_en TIMESTAMP
 );
 
-------------------------------------------------------------
+
 -- Tabla OBLIGACION_FIJA
-------------------------------------------------------------
 CREATE TABLE OBLIGACION_FIJA (
-    id_obligacion INT NOT NULL PRIMARY KEY,
+    id_obligacion INT NOT NULL 
+        GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     id_usuario INT,
     id_subcategoria INT,
     nombre VARCHAR(100),
@@ -104,21 +112,46 @@ CREATE TABLE OBLIGACION_FIJA (
     vigente SMALLINT,
     fecha_inicio TIMESTAMP,
     fecha_fin TIMESTAMP,
+
+    -- Auditoría
     creado_por VARCHAR(100),
     modificado_por VARCHAR(100),
-    creado_en TIMESTAMP,
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     modificado_en TIMESTAMP
 );
 
-------------------------------------------------------------
+
+-- Tabla META_AHORRO
+CREATE TABLE META_AHORRO (
+    id_meta INT NOT NULL 
+        GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_usuario INT,
+    id_subcategoria INT,
+    nombre VARCHAR(100),
+    descripcion CLOB,
+    monto_total DECIMAL(10,2),
+    monto_ahorrado DECIMAL(10,2),
+    fecha_inicio TIMESTAMP,
+    fecha_objetivo TIMESTAMP,
+    prioridad VARCHAR(20),
+    estado VARCHAR(20),
+
+    -- Auditoría
+    creado_por VARCHAR(100),
+    modificado_por VARCHAR(100),
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    modificado_en TIMESTAMP
+);
+
+
 -- Tabla TRANSACCIONES
-------------------------------------------------------------
 CREATE TABLE TRANSACCIONES (
-    id_transaccion INT NOT NULL PRIMARY KEY,
+    id_transaccion INT NOT NULL 
+        GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     id_usuario INT,
     id_presupuesto INT,
     id_subcategoria INT,
-    id_obligacion INT,
+    id_obligacion INT, -- opcional
     anio INT,
     mes INT,
     tipo VARCHAR(20),
@@ -129,15 +162,16 @@ CREATE TABLE TRANSACCIONES (
     numero_factura VARCHAR(50),
     observaciones CLOB,
     fecha_registro TIMESTAMP,
+
+    -- Auditoría
     creado_por VARCHAR(100),
     modificado_por VARCHAR(100),
-    creado_en TIMESTAMP,
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     modificado_en TIMESTAMP
 );
 
-------------------------------------------------------------
--- Llaves foráneas
-------------------------------------------------------------
+
+-- Llaves foráneas=
 
 ALTER TABLE PRESUPUESTOS 
   ADD CONSTRAINT FK_PRESUP_USUARIO 
