@@ -15,5 +15,23 @@ services:
       - db2data:/database
     restart: unless-stopped
 
+  node-api:
+    platform: linux/amd64        
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: node-api
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db2
+    environment:
+      DB_HOST: db2
+      DB_PORT: 50000
+      DB_NAME: APPDB
+      DB_USER: db2inst1
+      DB_PASSWORD: pass123
+    restart: unless-stopped
+
 volumes:
   db2data:
