@@ -50,7 +50,6 @@ BEGIN
 END@
 
 
-------------------------------------------------------------
 -- CRUD CATEGORIAS
 ------------------------------------------------------------
 
@@ -99,10 +98,8 @@ BEGIN
 END@
 
 
-------------------------------------------------------------
 -- CRUD SUBCATEGORIAS
-------------------------------------------------------------
-
+-------------------------------------
 -- Insertar
 CREATE OR REPLACE PROCEDURE sp_insertar_subcategoria ( IN p_id_categoria INT, IN p_nombre VARCHAR(100), IN p_descripcion CLOB,
     IN p_es_defecto SMALLINT, IN p_creado_por VARCHAR(100))
@@ -149,7 +146,6 @@ BEGIN
 END@
 
 
-------------------------------------------------------------
 -- CRUD PRESUPUESTOS
 ------------------------------------------------------------
 
@@ -202,7 +198,6 @@ BEGIN
 END@
 
 
-------------------------------------------------------------
 -- CRUD PRESUPUESTO_DETALLE
 ------------------------------------------------------------
 
@@ -252,7 +247,6 @@ BEGIN
 END@
 
 
-------------------------------------------------------------
 -- CRUD OBLIGACION_FIJA
 ------------------------------------------------------------
 
@@ -309,7 +303,6 @@ BEGIN
 END@
 
 
-------------------------------------------------------------
 -- CRUD TRANSACCIONES
 ------------------------------------------------------------
 
@@ -369,7 +362,6 @@ BEGIN
 END@
 
 
-------------------------------------------------------------
 -- CRUD META_AHORRO
 ------------------------------------------------------------
 
@@ -424,12 +416,11 @@ BEGIN
     WHERE id_usuario = p_id_usuario;
 END@
 
-----------------------------
--- Procedimientos
-----------------------------
 
+
+-- PROCEDIMIENTOS
+----------------------------
 --sp_crear_presupuesto_completo
-
 
 -- Registrar transaccion completa
 CREATE OR REPLACE PROCEDURE sp_registrar_transaccion_completa ( IN p_id_usuario INT, IN p_id_presupuesto INT, IN p_id_subcategoria INT, IN p_id_obligacion INT,
