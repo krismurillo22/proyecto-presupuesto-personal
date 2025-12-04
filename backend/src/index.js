@@ -37,7 +37,7 @@ app.get('/test-db', (req, res) => {
 
     console.log('✅ Conexión a DB2 exitosa, ejecutando schema, triggers, procedures, functions y seed...');
 
-    runSchema(conn)
+    runSchema()
       .then(() => runTriggers(conn))
       .then(() => runProcedures(conn))
       .then(() => runFunctions(conn))
