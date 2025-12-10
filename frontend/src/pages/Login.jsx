@@ -1,13 +1,33 @@
 import { useState } from 'react';
 import { Wallet } from 'lucide-react';
+import { obtenerUsuarioPorCorreo } from "../services/usuarios";
 
 export default function Login({ onLogin }) {
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState("");
+  const [error, setError] = useState("");
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (email) {
-      onLogin();
+    setError("");
+
+    try {
+      // 1) Buscar usuario por correo
+      const res = await obtenerUsuarioPorCorreo(email);
+
+      if (!res.data.usuario) {
+        setError("El usuario no existe. Contacta al administrador.");
+        return;
+      }
+
+      // 2) Usuario encontrado → iniciar sesión
+      onLogin({
+        email,
+        id_usuario: res.data.usuario.ID_USUARIO,
+      });
+
+    } catch (err) {
+      console.error("Error en login:", err);
+      setError("Error consultando el usuario. Intenta más tarde.");
     }
   };
 
@@ -26,30 +46,31 @@ export default function Login({ onLogin }) {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label htmlFor="email" className="block text-gray-700 mb-2">
-              Correo Electrónico
-            </label>
+            <label className="block text-gray-700 mb-2">Correo Electrónico</label>
 
             <input
-              id="email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg"
               placeholder="tu@email.com"
               required
             />
           </div>
 
+          {error && (
+            <p className="text-red-600 text-sm text-center -mt-3">{error}</p>
+          )}
+
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors"
+            className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700"
           >
             Iniciar Sesión
           </button>
 
           <p className="text-center text-gray-500 text-sm mt-4">
-            Demo: Usa cualquier correo electrónico válido
+            Si no tienes usuario, solicita la creación en el sistema.
           </p>
         </form>
       </div>

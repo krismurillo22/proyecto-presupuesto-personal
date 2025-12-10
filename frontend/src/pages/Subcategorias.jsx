@@ -1,105 +1,164 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus, Edit2, Trash2, Layers, FolderOpen } from "lucide-react";
 
-export default function Subcategorias() {
-  const categorias = [
-    { id: 1, nombre: "Salario" },
-    { id: 2, nombre: "Alimentación" },
-    { id: 3, nombre: "Vivienda" },
-    { id: 4, nombre: "Transporte" },
-    { id: 5, nombre: "Ahorro" },
-    { id: 6, nombre: "Entretenimiento" }
-  ];
+import { obtenerCategorias } from "../services/categorias";
+import {
+  obtenerSubcategorias,
+  crearSubcategoria,
+  actualizarSubcategoria,
+  eliminarSubcategoria,
+} from "../services/subcategorias";
 
-  const [subcategorias, setSubcategorias] = useState([
-    { id: 1, nombre: "Supermercado", categoriaId: 2, categoriaNombre: "Alimentación", descripcion: "Compras de despensa" },
-    { id: 2, nombre: "Restaurantes", categoriaId: 2, categoriaNombre: "Alimentación", descripcion: "Comidas fuera de casa" },
-    { id: 3, nombre: "Renta", categoriaId: 3, categoriaNombre: "Vivienda", descripcion: "Pago de renta mensual" },
-    { id: 4, nombre: "Servicios", categoriaId: 3, categoriaNombre: "Vivienda", descripcion: "Luz, agua, internet" },
-    { id: 5, nombre: "Gasolina", categoriaId: 4, categoriaNombre: "Transporte", descripcion: "Combustible para auto" },
-    { id: 6, nombre: "Uber", categoriaId: 4, categoriaNombre: "Transporte", descripcion: "Viajes en Uber/Taxi" },
-    { id: 7, nombre: "Netflix", categoriaId: 6, categoriaNombre: "Entretenimiento", descripcion: "Suscripción streaming" },
-    { id: 8, nombre: "Cine", categoriaId: 6, categoriaNombre: "Entretenimiento", descripcion: "Boletos de cine" }
-  ]);
+export default function Subcategorias({ user }) {
+  const [categorias, setCategorias] = useState([]);
+  const [subcategorias, setSubcategorias] = useState([]);
 
   const [showModal, setShowModal] = useState(false);
   const [editingSubcategoria, setEditingSubcategoria] = useState(null);
 
   const [formData, setFormData] = useState({
     nombre: "",
-    categoriaId: 2,
-    descripcion: ""
+    categoriaId: "",
+    descripcion: "",
   });
 
   const [filtroCategoria, setFiltroCategoria] = useState(null);
 
+  // 🔥 Cargar categorías y subcategorías al iniciar
+  useEffect(() => {
+    obtenerCategorias()
+      .then((res) => {
+        const cats = res.data.categorias.map((c) => ({
+          id: c.ID_CATEGORIA,
+          nombre: c.NOMBRE,
+        }));
+
+        setCategorias(cats);
+
+        // Después de cargar categorías → cargamos subcategorías
+        obtenerSubcategorias()
+          .then((subRes) => {
+            const subs = subRes.data.subcategorias.map((s) => ({
+              id: s.ID_SUBCATEGORIA,
+              nombre: s.NOMBRE,
+              categoriaId: s.ID_CATEGORIA,
+              categoriaNombre: cats.find((c) => c.id === s.ID_CATEGORIA)?.nombre || "Sin categoría",
+              descripcion: s.DESCRIPCION,
+            }));
+
+            setSubcategorias(subs);
+          })
+          .catch((err) => console.error("Error subcategorías:", err));
+
+      })
+      .catch((err) => console.error("Error categorías:", err));
+  }, []);
+
+  const cargarCategorias = () => {
+    obtenerCategorias()
+      .then((res) => {
+        setCategorias(
+          res.data.categorias.map((c) => ({
+            id: c.ID_CATEGORIA,
+            nombre: c.NOMBRE,
+          }))
+        );
+      })
+      .catch((err) => console.error("Error categorías:", err));
+  };
+
+  const cargarSubcategorias = () => {
+    obtenerSubcategorias()
+      .then((res) => {
+        setSubcategorias(
+          res.data.subcategorias.map((s) => ({
+            id: s.ID_SUBCATEGORIA,
+            nombre: s.NOMBRE,
+            categoriaId: s.ID_CATEGORIA,
+            categoriaNombre: categorias.find((c) => c.id === s.ID_CATEGORIA)?.nombre || "",
+            descripcion: s.DESCRIPCION,
+          }))
+        );
+      })
+      .catch((err) => console.error("Error subcategorías:", err));
+  };
+
+  // 🔥 Abrir modal
   const handleOpenModal = (subcategoria) => {
     if (subcategoria) {
       setEditingSubcategoria(subcategoria);
       setFormData({
         nombre: subcategoria.nombre,
         categoriaId: subcategoria.categoriaId,
-        descripcion: subcategoria.descripcion
+        descripcion: subcategoria.descripcion,
       });
     } else {
       setEditingSubcategoria(null);
-      setFormData({ nombre: "", categoriaId: 2, descripcion: "" });
+      setFormData({
+        nombre: "",
+        categoriaId: categorias[0]?.id || "",
+        descripcion: "",
+      });
     }
-
     setShowModal(true);
   };
 
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingSubcategoria(null);
-    setFormData({ nombre: "", categoriaId: 2, descripcion: "" });
   };
 
+  // 🔥 CREAR / EDITAR
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    const categoria = categorias.find((c) => c.id === formData.categoriaId);
+    const payload = {
+      id_categoria: formData.categoriaId,
+      nombre: formData.nombre,
+      descripcion: formData.descripcion,
+      es_defecto: 0,
+      creado_por: user.email,         // 🔥 aquí
+    };
 
     if (editingSubcategoria) {
-      // Editar
-      setSubcategorias(
-        subcategorias.map((sub) =>
-          sub.id === editingSubcategoria.id
-            ? {
-                ...sub,
-                ...formData,
-                categoriaNombre: categoria ? categoria.nombre : ""
-              }
-            : sub
-        )
-      );
-    } else {
-      // Crear
-      const nueva = {
-        id: Math.max(...subcategorias.map((s) => s.id), 0) + 1,
-        ...formData,
-        categoriaNombre: categoria ? categoria.nombre : ""
-      };
-
-      setSubcategorias([...subcategorias, nueva]);
+      actualizarSubcategoria(editingSubcategoria.id, {
+        nombre: formData.nombre,
+        descripcion: formData.descripcion,
+        modificado_por: user.email,   // 🔥 aquí
+      })
+        .then(() => {
+          cargarSubcategorias();
+          handleCloseModal();
+        })
+        .catch((err) => console.error("Error editando:", err));
+      return;
     }
 
-    handleCloseModal();
+    crearSubcategoria(payload)
+      .then(() => {
+        cargarSubcategorias();
+        handleCloseModal();
+      })
+      .catch((err) => console.error("Error creando:", err));
   };
 
+  // 🔥 Eliminar
   const handleDelete = (id) => {
-    if (confirm("¿Estás seguro de eliminar esta subcategoría?")) {
-      setSubcategorias(subcategorias.filter((sub) => sub.id !== id));
-    }
+    if (!confirm("¿Seguro deseas eliminar esta subcategoría?")) return;
+
+    eliminarSubcategoria(id)
+      .then(() => cargarSubcategorias())
+      .catch((err) => alert("No se puede eliminar: está en uso en presupuestos"));
   };
 
+  // Filtro
   const subcategoriasFiltradas = filtroCategoria
-    ? subcategorias.filter((sub) => sub.categoriaId === filtroCategoria)
+    ? subcategorias.filter((s) => s.categoriaId === filtroCategoria)
     : subcategorias;
 
   const contadorPorCategoria = categorias.map((cat) => ({
     ...cat,
-    count: subcategorias.filter((sub) => sub.categoriaId === cat.id).length
+    count: subcategorias.filter((s) => s.categoriaId === cat.id).length,
   }));
 
   return (
@@ -122,12 +181,12 @@ export default function Subcategorias() {
         </button>
       </div>
 
-      {/* Filtro por categoría */}
+      {/* FILTRO POR CATEGORÍA */}
       <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
         <h2 className="text-gray-900 mb-4">Filtrar por Categoría</h2>
 
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          {/* Todas */}
+          {/* TODAS */}
           <button
             onClick={() => setFiltroCategoria(null)}
             className={`p-4 rounded-lg border-2 transition-all ${
@@ -141,7 +200,7 @@ export default function Subcategorias() {
             <p className="text-gray-900 text-center">{subcategorias.length}</p>
           </button>
 
-          {/* Por categoría */}
+          {/* POR CATEGORIA */}
           {contadorPorCategoria.map((cat) => (
             <button
               key={cat.id}
@@ -160,7 +219,7 @@ export default function Subcategorias() {
         </div>
       </div>
 
-      {/* Tabla de subcategorías */}
+      {/* TABLA */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100">
         <div className="p-6 border-b border-gray-100">
           <h2 className="text-gray-900">
@@ -177,15 +236,11 @@ export default function Subcategorias() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-gray-700">Nombre</th>
-                <th className="px-6 py-3 text-left text-gray-700">
-                  Categoría Principal
-                </th>
+                <th className="px-6 py-3 text-left text-gray-700">Categoría</th>
                 <th className="px-6 py-3 text-left text-gray-700">
                   Descripción
                 </th>
-                <th className="px-6 py-3 text-center text-gray-700">
-                  Acciones
-                </th>
+                <th className="px-6 py-3 text-center text-gray-700">Acciones</th>
               </tr>
             </thead>
 
@@ -205,9 +260,7 @@ export default function Subcategorias() {
                     </span>
                   </td>
 
-                  <td className="px-6 py-4 text-gray-600">
-                    {sub.descripcion}
-                  </td>
+                  <td className="px-6 py-4 text-gray-600">{sub.descripcion}</td>
 
                   <td className="px-6 py-4">
                     <div className="flex items-center justify-center gap-2">
@@ -240,8 +293,8 @@ export default function Subcategorias() {
         </div>
       </div>
 
-      {/* Modal */}
-      {showModal && (
+      {/* MODAL */}
+      {showModal && categorias.length > 0 && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
             <div className="p-6 border-b border-gray-100">
@@ -251,6 +304,7 @@ export default function Subcategorias() {
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              {/* Nombre */}
               <div>
                 <label className="block text-gray-700 mb-2">Nombre</label>
                 <input
@@ -259,12 +313,12 @@ export default function Subcategorias() {
                   onChange={(e) =>
                     setFormData({ ...formData, nombre: e.target.value })
                   }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Ej: Supermercado"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                   required
                 />
               </div>
 
+              {/* Categoría */}
               <div>
                 <label className="block text-gray-700 mb-2">
                   Categoría Principal
@@ -274,10 +328,10 @@ export default function Subcategorias() {
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      categoriaId: Number(e.target.value)
+                      categoriaId: Number(e.target.value),
                     })
                   }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                 >
                   {categorias.map((cat) => (
                     <option key={cat.id} value={cat.id}>
@@ -287,32 +341,35 @@ export default function Subcategorias() {
                 </select>
               </div>
 
+              {/* Descripción */}
               <div>
                 <label className="block text-gray-700 mb-2">Descripción</label>
                 <textarea
                   value={formData.descripcion}
                   onChange={(e) =>
-                    setFormData({ ...formData, descripcion: e.target.value })
+                    setFormData({
+                      ...formData,
+                      descripcion: e.target.value,
+                    })
                   }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                   rows="3"
-                  placeholder="Describe esta subcategoría..."
-                  required
                 />
               </div>
 
+              {/* Botones */}
               <div className="flex gap-3 pt-4">
                 <button
                   type="button"
                   onClick={handleCloseModal}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg"
                 >
                   Cancelar
                 </button>
 
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg"
                 >
                   {editingSubcategoria ? "Guardar Cambios" : "Crear Subcategoría"}
                 </button>

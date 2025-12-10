@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Plus,
   Edit2,
@@ -6,34 +6,46 @@ import {
   FolderOpen,
   TrendingUp,
   TrendingDown,
-  PiggyBank
+  PiggyBank,
 } from "lucide-react";
 
-export default function Categorias() {
-  const [categorias, setCategorias] = useState([
-    { id: 1, nombre: "Salario", tipo: "ingreso", descripcion: "Ingresos por trabajo" },
-    { id: 2, nombre: "Alimentación", tipo: "gasto", descripcion: "Compras de supermercado y restaurantes" },
-    { id: 3, nombre: "Vivienda", tipo: "gasto", descripcion: "Renta, servicios y mantenimiento" },
-    { id: 4, nombre: "Transporte", tipo: "gasto", descripcion: "Gasolina, transporte público, Uber" },
-    { id: 5, nombre: "Ahorro", tipo: "ahorro", descripcion: "Ahorros mensuales" },
-    { id: 6, nombre: "Entretenimiento", tipo: "gasto", descripcion: "Cine, streaming, salidas" }
-  ]);
+import {
+  obtenerCategorias,
+  crearCategoria,
+  actualizarCategoria,
+  eliminarCategoria,
+} from "../services/categorias";
 
+export default function Categorias({ user }) {
+  const [categorias, setCategorias] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [editingCategoria, setEditingCategoria] = useState(null);
+
   const [formData, setFormData] = useState({
     nombre: "",
     tipo: "gasto",
-    descripcion: ""
+    descripcion: "",
   });
 
+  // 🔥 1) CARGAR CATEGORÍAS desde DB2
+  useEffect(() => {
+    cargarCategorias();
+  }, []);
+
+  const cargarCategorias = () => {
+    obtenerCategorias()
+      .then((res) => setCategorias(res.data.categorias))
+      .catch((err) => console.error("Error cargando categorías:", err));
+  };
+
+  // 🔥 Abrir modal
   const handleOpenModal = (categoria) => {
     if (categoria) {
       setEditingCategoria(categoria);
       setFormData({
-        nombre: categoria.nombre,
-        tipo: categoria.tipo,
-        descripcion: categoria.descripcion
+        nombre: categoria.NOMBRE,
+        tipo: categoria.TIPO,
+        descripcion: categoria.DESCRIPCION || "",
       });
     } else {
       setEditingCategoria(null);
@@ -48,34 +60,51 @@ export default function Categorias() {
     setFormData({ nombre: "", tipo: "gasto", descripcion: "" });
   };
 
+  // 🔥 CREAR / EDITAR categoría
   const handleSubmit = (e) => {
     e.preventDefault();
 
+    const payload = {
+      nombre: formData.nombre,
+      descripcion: formData.descripcion,
+      tipo: formData.tipo,
+      creado_por: user.email
+    };
+
+    // EDITAR
     if (editingCategoria) {
-      // Editar categoría existente
-      setCategorias(
-        categorias.map((cat) =>
-          cat.id === editingCategoria.id ? { ...cat, ...formData } : cat
-        )
-      );
-    } else {
-      // Crear nueva categoría
-      const newCategoria = {
-        id: Math.max(...categorias.map((c) => c.id), 0) + 1,
-        ...formData
-      };
-      setCategorias([...categorias, newCategoria]);
+      actualizarCategoria(editingCategoria.ID_CATEGORIA, {
+        nombre: formData.nombre,
+        descripcion: formData.descripcion,
+        modificado_por: user.email
+      })
+        .then(() => {
+          cargarCategorias();
+          handleCloseModal();
+        })
+        .catch((err) => console.error("Error editando:", err));
+      return;
     }
 
-    handleCloseModal();
+    // CREAR
+    crearCategoria(payload)
+      .then(() => {
+        cargarCategorias();
+        handleCloseModal();
+      })
+      .catch((err) => console.error("Error creando:", err));
   };
 
+  // 🔥 ELIMINAR
   const handleDelete = (id) => {
-    if (confirm("¿Estás seguro de eliminar esta categoría?")) {
-      setCategorias(categorias.filter((cat) => cat.id !== id));
-    }
+    if (!confirm("¿Seguro deseas eliminar esta categoría?")) return;
+
+    eliminarCategoria(id)
+      .then(() => cargarCategorias())
+      .catch((err) => console.error("Error eliminando:", err));
   };
 
+  // Iconos según tipo
   const getTipoIcon = (tipo) => {
     switch (tipo) {
       case "ingreso":
@@ -93,15 +122,16 @@ export default function Categorias() {
     const styles = {
       ingreso: "bg-green-100 text-green-700",
       gasto: "bg-red-100 text-red-700",
-      ahorro: "bg-blue-100 text-blue-700"
+      ahorro: "bg-blue-100 text-blue-700",
     };
     return styles[tipo] || "bg-gray-100 text-gray-700";
   };
 
+  // Agrupar por tipo
   const categoriasPorTipo = {
-    ingreso: categorias.filter((c) => c.tipo === "ingreso"),
-    gasto: categorias.filter((c) => c.tipo === "gasto"),
-    ahorro: categorias.filter((c) => c.tipo === "ahorro")
+    ingreso: categorias.filter((c) => c.TIPO === "ingreso"),
+    gasto: categorias.filter((c) => c.TIPO === "gasto"),
+    ahorro: categorias.filter((c) => c.TIPO === "ahorro"),
   };
 
   return (
@@ -176,27 +206,26 @@ export default function Categorias() {
 
             <tbody className="divide-y divide-gray-100">
               {categorias.map((categoria) => (
-                <tr key={categoria.id} className="hover:bg-gray-50">
+                <tr key={categoria.ID_CATEGORIA} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      {getTipoIcon(categoria.tipo)}
-                      <span className="text-gray-900">{categoria.nombre}</span>
+                      {getTipoIcon(categoria.TIPO)}
+                      <span className="text-gray-900">{categoria.NOMBRE}</span>
                     </div>
                   </td>
 
                   <td className="px-6 py-4">
                     <span
                       className={`px-3 py-1 rounded-full text-sm ${getTipoBadge(
-                        categoria.tipo
+                        categoria.TIPO
                       )}`}
                     >
-                      {categoria.tipo.charAt(0).toUpperCase() +
-                        categoria.tipo.slice(1)}
+                      {categoria.TIPO}
                     </span>
                   </td>
 
                   <td className="px-6 py-4 text-gray-600">
-                    {categoria.descripcion}
+                    {categoria.DESCRIPCION}
                   </td>
 
                   <td className="px-6 py-4">
@@ -209,7 +238,9 @@ export default function Categorias() {
                       </button>
 
                       <button
-                        onClick={() => handleDelete(categoria.id)}
+                        onClick={() =>
+                          handleDelete(categoria.ID_CATEGORIA)
+                        }
                         className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -223,7 +254,7 @@ export default function Categorias() {
         </div>
       </div>
 
-      {/* Modal */}
+      {/* MODAL */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
@@ -242,8 +273,7 @@ export default function Categorias() {
                   onChange={(e) =>
                     setFormData({ ...formData, nombre: e.target.value })
                   }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Ej: Alimentación"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                   required
                 />
               </div>
@@ -255,7 +285,7 @@ export default function Categorias() {
                   onChange={(e) =>
                     setFormData({ ...formData, tipo: e.target.value })
                   }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                 >
                   <option value="ingreso">Ingreso</option>
                   <option value="gasto">Gasto</option>
@@ -264,15 +294,19 @@ export default function Categorias() {
               </div>
 
               <div>
-                <label className="block text-gray-700 mb-2">Descripción</label>
+                <label className="block text-gray-700 mb-2">
+                  Descripción
+                </label>
                 <textarea
                   value={formData.descripcion}
                   onChange={(e) =>
-                    setFormData({ ...formData, descripcion: e.target.value })
+                    setFormData({
+                      ...formData,
+                      descripcion: e.target.value,
+                    })
                   }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                   rows="3"
-                  placeholder="Describe esta categoría..."
                   required
                 />
               </div>
@@ -281,14 +315,14 @@ export default function Categorias() {
                 <button
                   type="button"
                   onClick={handleCloseModal}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg"
                 >
                   Cancelar
                 </button>
 
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg"
                 >
                   {editingCategoria ? "Guardar Cambios" : "Crear Categoría"}
                 </button>

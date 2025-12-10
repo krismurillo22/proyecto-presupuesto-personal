@@ -28,6 +28,32 @@ router.get('/usuarios/get-usuarios', (req, res) => {
     });
 });
 
+router.get("/usuarios/buscar", (req, res) => {
+  const { correo } = req.query;
+
+  if (!correo)
+    return res.status(400).json({ ok: false, message: "Correo requerido" });
+
+  getConnection((err, conn) => {
+    if (err) return res.status(500).json({ ok: false, error: err.message });
+
+    const sql = `
+      SELECT *
+      FROM PRESUPUESTO.USUARIOS
+      WHERE CORREO = ?
+    `;
+
+    conn.query(sql, [correo], (err, data) => {
+      conn.close();
+
+      if (err) return res.status(500).json({ ok: false, error: err.message });
+
+      return res.json({ ok: true, usuario: data[0] });
+    });
+  });
+});
+
+
 router.get('/usuarios/:id', (req, res) => {
     const { id } = req.params;
 
@@ -154,6 +180,73 @@ router.get('/presupuestos/:id', (req, res) => {
     });
 });
 
+router.get('/presupuestos/usuario/:id_usuario', (req, res) => {
+    const { id_usuario } = req.params;
+
+    if (!id_usuario) {
+        return res.status(400).json({ ok: false, error: "id_usuario requerido" });
+    }
+
+    getConnection((err, conn) => {
+        if (err) return res.status(500).json({ ok: false, error: err.message });
+
+        const sql = `
+            SELECT *
+            FROM PRESUPUESTO.PRESUPUESTOS
+            WHERE id_usuario = ?
+            ORDER BY anio_inicio DESC, mes_inicio DESC
+        `;
+
+        conn.query(sql, [id_usuario], (err, rows) => {
+            conn.close();
+
+            if (err) {
+                return res.status(500).json({ ok: false, error: err.message });
+            }
+
+            return res.json({
+                ok: true,
+                presupuestos: rows
+            });
+        });
+    });
+});
+
+router.get('/presupuestos/usuario/:id_usuario/activo', (req, res) => {
+    const { id_usuario } = req.params;
+
+    if (!id_usuario) {
+        return res.status(400).json({ ok: false, error: "id_usuario requerido" });
+    }
+
+    getConnection((err, conn) => {
+        if (err) return res.status(500).json({ ok: false, error: err.message });
+
+        const sql = `
+            SELECT *
+            FROM PRESUPUESTO.PRESUPUESTOS
+            WHERE id_usuario = ?
+            ORDER BY anio_inicio DESC, mes_inicio DESC
+            FETCH FIRST 1 ROW ONLY
+        `;
+
+        conn.query(sql, [id_usuario], (err, rows) => {
+            conn.close();
+
+            if (err) return res.status(500).json({ ok: false, error: err.message });
+
+            if (rows.length === 0) {
+                return res.status(404).json({ ok: false, mensaje: "El usuario no tiene presupuestos" });
+            }
+
+            return res.json({
+                ok: true,
+                presupuesto_activo: rows[0]
+            });
+        });
+    });
+});
+
 router.post('/presupuestos/set-presupuestos', (req, res) => {
     const { id_usuario, nombre, anio_inicio, mes_inicio, anio_fin, mes_fin, creado_por} = req.body;
 
@@ -210,23 +303,59 @@ router.delete('/presupuestos/:id', (req, res) => {
     const { id } = req.params;
 
     if (isNaN(id)) {
-        return res.status(400).json({ ok: false, error: "El ID debe ser numérico" });
+        return res.status(400).json({
+            ok: false,
+            error: "El ID debe ser numérico"
+        });
     }
 
     getConnection((err, conn) => {
-        if (err) return res.status(500).json({ ok: false, error: err.message });
+        if (err) {
+            return res.status(500).json({ ok: false, error: err.message });
+        }
 
-        const sql = "CALL PRESUPUESTO.sp_eliminar_presupuesto(?)";
+        // 1️⃣ Eliminar detalles primero
+        const sqlEliminarDetalles = `
+            DELETE FROM PRESUPUESTO.PRESUPUESTO_DETALLE
+            WHERE id_presupuesto = ?
+        `;
 
-        conn.query(sql, [id], (err) => {
-            conn.close();
+        // 2️⃣ Luego eliminar el presupuesto
+        const sqlEliminarPresupuesto = `
+            DELETE FROM PRESUPUESTO.PRESUPUESTOS
+            WHERE id_presupuesto = ?
+        `;
 
-            if (err) return res.status(500).json({ ok: false, error: err.message });
+        conn.query(sqlEliminarDetalles, [id], (err) => {
+            if (err) {
+                conn.close();
+                console.error("❌ Error eliminando detalles:", err);
+                return res.status(500).json({
+                    ok: false,
+                    error: "Error eliminando detalles del presupuesto"
+                });
+            }
 
-            return res.json({ ok: true, mensaje: "Presupuesto eliminado correctamente" });
+            conn.query(sqlEliminarPresupuesto, [id], (err2) => {
+                conn.close();
+
+                if (err2) {
+                    console.error("❌ Error eliminando presupuesto:", err2);
+                    return res.status(500).json({
+                        ok: false,
+                        error: "Error eliminando el presupuesto"
+                    });
+                }
+
+                return res.json({
+                    ok: true,
+                    mensaje: "Presupuesto eliminado correctamente"
+                });
+            });
         });
     });
 });
+
 
 router.get('/categorias/get-categorias', (req, res) => {
     getConnection((err, conn) => {
@@ -570,6 +699,32 @@ router.put('/presupuesto-detalle/:id', (req, res) => {
             if (err) return res.status(500).json({ ok: false, error: err.message });
 
             return res.json({ ok: true, mensaje: "Detalle actualizado correctamente" });
+        });
+    });
+});
+
+router.delete('/presupuesto-detalle/presupuesto/:id_presupuesto', (req, res) => {
+    const { id_presupuesto } = req.params;
+
+    getConnection((err, conn) => {
+        if (err) return res.status(500).json({ ok: false, error: err.message });
+
+        const sql = `
+            DELETE FROM PRESUPUESTO.PRESUPUESTO_DETALLE
+            WHERE id_presupuesto = ?
+        `;
+
+        conn.query(sql, [id_presupuesto], (err) => {
+            conn.close();
+
+            if (err) {
+                return res.status(500).json({
+                    ok: false,
+                    error: err.message
+                });
+            }
+
+            return res.json({ ok: true, mensaje: "Detalles eliminados correctamente" });
         });
     });
 });
@@ -1062,6 +1217,56 @@ router.delete('/metas/:id_meta', (req, res) => {
 });
 
 //Procedimientos logicos
+router.get('/reportes/gastos-por-categoria', (req, res) => {
+    const { id_usuario, id_presupuesto, anio, mes } = req.query;
+
+    if (!id_usuario || !id_presupuesto || !anio || !mes) {
+        return res.status(400).json({
+            ok: false,
+            error: "id_usuario, id_presupuesto, anio y mes son obligatorios"
+        });
+    }
+
+    getConnection((err, conn) => {
+        if (err) return res.status(500).json({ ok: false, error: err.message });
+
+        const sql = `
+            SELECT 
+                c.id_categoria,
+                c.nombre AS categoria,
+                COALESCE(SUM(t.monto), 0) AS total_gastado
+            FROM PRESUPUESTO.TRANSACCIONES t
+            JOIN PRESUPUESTO.SUBCATEGORIAS s 
+                ON t.id_subcategoria = s.id_subcategoria
+            JOIN PRESUPUESTO.CATEGORIAS c 
+                ON s.id_categoria = c.id_categoria
+            WHERE 
+                t.id_usuario = ?
+                AND t.id_presupuesto = ?
+                AND t.anio = ?
+                AND t.mes = ?
+                AND t.tipo = 'gasto'
+            GROUP BY 
+                c.id_categoria, c.nombre
+            ORDER BY 
+                total_gastado DESC
+        `;
+
+        const params = [
+            Number(id_usuario),
+            Number(id_presupuesto),
+            Number(anio),
+            Number(mes)
+        ];
+
+        conn.query(sql, params, (err, rows) => {
+            conn.close();
+            if (err) return res.status(500).json({ ok: false, error: err.message });
+
+            return res.json({ ok: true, categorias: rows });
+        });
+    });
+});
 
 router.post('/transacciones/registrar', (req, res) => {
     const { id_usuario, id_presupuesto, id_subcategoria, id_obligacion, anio, mes, tipo,

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Plus,
   Edit2,
@@ -6,104 +6,100 @@ import {
   Receipt,
   TrendingUp,
   TrendingDown,
-  Filter
+  Filter,
+  Layers
 } from "lucide-react";
 
-export default function Transacciones() {
-  const [transacciones, setTransacciones] = useState([
-    {
-      id: 1,
-      subcategoria: "Supermercado",
-      categoria: "Alimentación",
-      tipo: "gasto",
-      ano: 2025,
-      mes: 11,
-      monto: 2500,
-      fecha: "2025-11-15",
-      metodoPago: "Tarjeta de crédito",
-      descripcion: "Compras de la semana"
-    },
-    {
-      id: 2,
-      subcategoria: "Renta",
-      categoria: "Vivienda",
-      tipo: "gasto",
-      ano: 2025,
-      mes: 11,
-      monto: 7200,
-      fecha: "2025-11-01",
-      metodoPago: "Transferencia",
-      descripcion: "Pago mensual de renta"
-    },
-    {
-      id: 3,
-      subcategoria: "Salario",
-      categoria: "Salario",
-      tipo: "ingreso",
-      ano: 2025,
-      mes: 11,
-      monto: 45000,
-      fecha: "2025-11-01",
-      metodoPago: "Transferencia",
-      descripcion: "Salario mensual"
-    },
-    {
-      id: 4,
-      subcategoria: "Gasolina",
-      categoria: "Transporte",
-      tipo: "gasto",
-      ano: 2025,
-      mes: 11,
-      monto: 800,
-      fecha: "2025-11-10",
-      metodoPago: "Efectivo",
-      descripcion: "Carga de gasolina"
-    },
-    {
-      id: 5,
-      subcategoria: "Netflix",
-      categoria: "Entretenimiento",
-      tipo: "gasto",
-      ano: 2025,
-      mes: 11,
-      monto: 199,
-      fecha: "2025-11-05",
-      metodoPago: "Tarjeta de débito",
-      descripcion: "Suscripción mensual"
-    }
-  ]);
+import {
+  obtenerTransaccionesPorUsuario,
+  crearTransaccion,
+  actualizarTransaccion,
+  eliminarTransaccion
+} from "../services/transacciones";
 
+import { obtenerSubcategorias } from "../services/subcategorias";
+
+export default function Transacciones({ user }) {
+  const [transacciones, setTransacciones] = useState([]);
+  const [subcategorias, setSubcategorias] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [editingTransaccion, setEditingTransaccion] = useState(null);
   const [filtroTipo, setFiltroTipo] = useState("todos");
 
-  const subcategoriasDisponibles = [
-    { nombre: "Salario", categoria: "Salario", tipo: "ingreso" },
-    { nombre: "Supermercado", categoria: "Alimentación", tipo: "gasto" },
-    { nombre: "Restaurantes", categoria: "Alimentación", tipo: "gasto" },
-    { nombre: "Renta", categoria: "Vivienda", tipo: "gasto" },
-    { nombre: "Servicios", categoria: "Vivienda", tipo: "gasto" },
-    { nombre: "Gasolina", categoria: "Transporte", tipo: "gasto" },
-    { nombre: "Uber", categoria: "Transporte", tipo: "gasto" },
-    { nombre: "Netflix", categoria: "Entretenimiento", tipo: "gasto" },
-    { nombre: "Cine", categoria: "Entretenimiento", tipo: "gasto" }
-  ];
-
   const [formData, setFormData] = useState({
-    subcategoria: "Supermercado",
-    ano: 2025,
-    mes: 11,
-    monto: 0,
+    id_subcategoria: "",
+    ano: new Date().getFullYear(),
+    mes: new Date().getMonth() + 1,
+    monto: "",
     fecha: new Date().toISOString().split("T")[0],
     metodoPago: "Efectivo",
     descripcion: ""
   });
 
-  const handleOpenModal = (transaccion) => {
+  const meses = [
+    "Enero","Febrero","Marzo","Abril","Mayo","Junio",
+    "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"
+  ];
+
+  // 🔥 1) Cargar subcategorías + transacciones
+  useEffect(() => {
+    cargarSubcategorias();
+  }, []);
+
+  useEffect(() => {
+    if (subcategorias.length > 0) cargarTransacciones();
+  }, [subcategorias]);
+
+  const cargarSubcategorias = () => {
+    obtenerSubcategorias()
+      .then(res => {
+        const subs = res.data.subcategorias.map(s => ({
+          id: s.ID_SUBCATEGORIA,
+          nombre: s.NOMBRE,
+          categoriaNombre: s.CATEGORIA_NOMBRE || "",
+          tipo: s.TIPO
+        }));
+        setSubcategorias(subs);
+
+        // Cuando se cargan, poner la primera como default
+        if (subs.length > 0) {
+          setFormData(f => ({
+            ...f,
+            id_subcategoria: subs[0].id
+          }));
+        }
+      })
+      .catch(err => console.error("Error subcategorías:", err));
+  };
+
+  const cargarTransacciones = () => {
+    obtenerTransaccionesPorUsuario(user.id_usuario)
+      .then(res => {
+        console.log("RAW FROM BACKEND:", res.data.transacciones);
+        const t = res.data.transacciones.map(tr => ({
+          id: tr.ID_TRANSACCION,
+          id_subcategoria: tr.ID_SUBCATEGORIA,
+          subcategoria: tr.NOMBRE_SUBCATEGORIA,
+          categoria: tr.ID_CATEGORIA || "",
+          tipo: tr.TIPO,
+          ano: tr.ANIO,
+          mes: tr.MES,
+          monto: tr.MONTO,
+          fecha: tr.FECHA_MOVIMIENTO.split(" ")[0],
+          metodoPago: tr.METODO_PAGO,
+          descripcion: tr.DESCRIPCION
+        }));
+        setTransacciones(t);
+      })
+      .catch(err => console.error("Error transacciones:", err));
+  };
+
+  // 🔥 Abrir modal
+  const handleOpenModal = (transaccion = null) => {
     if (transaccion) {
       setEditingTransaccion(transaccion);
       setFormData({
-        subcategoria: transaccion.subcategoria,
+        id_subcategoria: transaccion.id_subcategoria,
         ano: transaccion.ano,
         mes: transaccion.mes,
         monto: transaccion.monto,
@@ -114,15 +110,16 @@ export default function Transacciones() {
     } else {
       setEditingTransaccion(null);
       setFormData({
-        subcategoria: "Supermercado",
-        ano: 2025,
-        mes: 11,
-        monto: 0,
+        id_subcategoria: subcategorias[0]?.id || "",
+        ano: new Date().getFullYear(),
+        mes: new Date().getMonth() + 1,
+        monto: "",
         fecha: new Date().toISOString().split("T")[0],
         metodoPago: "Efectivo",
         descripcion: ""
       });
     }
+
     setShowModal(true);
   };
 
@@ -131,63 +128,79 @@ export default function Transacciones() {
     setEditingTransaccion(null);
   };
 
+  // 🔥 Guardar (crear/editar)
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    const subcatInfo = subcategoriasDisponibles.find(
-      (s) => s.nombre === formData.subcategoria
-    );
+    console.log("FECHA RAW QUE VIENE DEL INPUT:", formData.fecha); // <--- AGREGA ESTO
+
+    const subInfo = subcategorias.find(s => s.id === Number(formData.id_subcategoria));
+
+    const payload = {
+      id_usuario: user.id_usuario,
+      id_presupuesto: 2,        // <- IMPORTANTE
+      id_subcategoria: Number(formData.id_subcategoria),
+      id_obligacion: null,         // <- IMPORTANTE
+      anio: Number(formData.ano),
+      mes: Number(formData.mes),
+      tipo: subInfo.tipo,
+      descripcion: formData.descripcion,
+      monto: Number(formData.monto),
+      fecha_movimiento: formData.fecha,
+      metodo_pago: formData.metodoPago,
+      numero_factura: null,        // <- IMPORTANTE
+      observaciones: null,         // <- IMPORTANTE
+      creado_por: user.email
+    };
 
     if (editingTransaccion) {
-      setTransacciones(
-        transacciones.map((t) =>
-          t.id === editingTransaccion.id
-            ? {
-                ...t,
-                ...formData,
-                categoria: subcatInfo?.categoria || "",
-                tipo: subcatInfo?.tipo || "gasto"
-              }
-            : t
-        )
-      );
-    } else {
-      const newTransaccion = {
-        id: Math.max(...transacciones.map((t) => t.id), 0) + 1,
-        ...formData,
-        categoria: subcatInfo?.categoria || "",
-        tipo: subcatInfo?.tipo || "gasto"
-      };
-      setTransacciones([newTransaccion, ...transacciones]);
+      actualizarTransaccion(editingTransaccion.ID_TRANSACCION, {
+        anio: Number(formData.ano),
+        mes: Number(formData.mes),
+        descripcion: formData.descripcion,
+        monto: Number(formData.monto),
+        fecha_movimiento: formData.fecha,
+        metodo_pago: formData.metodoPago,
+        numero_factura: null,
+        observaciones: null,
+        modificado_por: user.email  // <-- IMPORTANTE
+      })
+        .then(() => {
+          cargarTransacciones();
+          handleCloseModal();
+        })
+        .catch(err => console.error("Error actualizando transacción:", err));
+
+      return;
     }
 
-    handleCloseModal();
+    crearTransaccion(payload)
+      .then(() => {
+        cargarTransacciones();
+        handleCloseModal();
+      })
+      .catch(err => console.error("Error guardando transacción:", err));
   };
 
+  // 🔥 Eliminar
   const handleDelete = (id) => {
-    if (confirm("¿Estás seguro de eliminar esta transacción?")) {
-      setTransacciones(transacciones.filter((t) => t.id !== id));
-    }
+    if (!confirm("¿Eliminar transacción?")) return;
+
+    eliminarTransaccion(id)
+      .then(() => cargarTransacciones())
+      .catch(err => console.error("Error eliminando transacción:", err));
   };
 
+  // Filtro
   const transaccionesFiltradas =
     filtroTipo === "todos"
       ? transacciones
-      : transacciones.filter((t) => t.tipo === filtroTipo);
+      : transacciones.filter(t => t.tipo === filtroTipo);
 
   const totales = {
-    ingresos: transacciones
-      .filter((t) => t.tipo === "ingreso")
-      .reduce((sum, t) => sum + t.monto, 0),
-    gastos: transacciones
-      .filter((t) => t.tipo === "gasto")
-      .reduce((sum, t) => sum + t.monto, 0),
+    ingresos: transacciones.filter(t => t.tipo === "ingreso").reduce((a, b) => a + b.monto, 0),
+    gastos: transacciones.filter(t => t.tipo === "gasto").reduce((a, b) => a + b.monto, 0)
   };
-
-  const meses = [
-    "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
-  ];
 
   return (
     <div className="space-y-6">
@@ -196,13 +209,13 @@ export default function Transacciones() {
         <div>
           <h1 className="text-gray-900 mb-2">Gestión de Transacciones</h1>
           <p className="text-gray-600">
-            Registra y administra todos tus ingresos y gastos
+            Registra y administra ingresos y gastos
           </p>
         </div>
 
         <button
           onClick={() => handleOpenModal()}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg"
         >
           <Plus className="w-5 h-5" />
           Registrar Transacción
@@ -211,7 +224,9 @@ export default function Transacciones() {
 
       {/* Resumen */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+        
+        {/* Ingresos */}
+        <div className="bg-white rounded-xl shadow-sm p-6 border">
           <div className="flex items-center gap-3 mb-2">
             <TrendingUp className="w-6 h-6 text-green-600" />
             <span className="text-gray-700">Total Ingresos</span>
@@ -221,7 +236,8 @@ export default function Transacciones() {
           </p>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+        {/* Gastos */}
+        <div className="bg-white rounded-xl shadow-sm p-6 border">
           <div className="flex items-center gap-3 mb-2">
             <TrendingDown className="w-6 h-6 text-red-600" />
             <span className="text-gray-700">Total Gastos</span>
@@ -231,54 +247,50 @@ export default function Transacciones() {
           </p>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+        {/* Balance */}
+        <div className="bg-white rounded-xl shadow-sm p-6 border">
           <div className="flex items-center gap-3 mb-2">
             <Receipt className="w-6 h-6 text-blue-600" />
             <span className="text-gray-700">Balance</span>
           </div>
-          <p
-            className={
-              totales.ingresos - totales.gastos >= 0
-                ? "text-green-600"
-                : "text-red-600"
-            }
-          >
+          <p className={totales.ingresos - totales.gastos >= 0 ? "text-green-600" : "text-red-600"}>
             ${(totales.ingresos - totales.gastos).toLocaleString("es-MX")}
           </p>
         </div>
       </div>
 
       {/* Filtros */}
-      <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+      <div className="bg-white rounded-xl shadow-sm p-6 border">
         <div className="flex items-center gap-4">
           <Filter className="w-5 h-5 text-gray-600" />
           <span className="text-gray-700">Filtrar por tipo:</span>
 
-          <div className="flex gap-2">
-            {[
-              { key: "todos", label: "Todos", color: "bg-blue-600" },
-              { key: "ingreso", label: "Ingresos", color: "bg-green-600" },
-              { key: "gasto", label: "Gastos", color: "bg-red-600" },
-            ].map((btn) => (
-              <button
-                key={btn.key}
-                onClick={() => setFiltroTipo(btn.key)}
-                className={`px-4 py-2 rounded-lg ${
-                  filtroTipo === btn.key
-                    ? `${btn.color} text-white`
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-              >
-                {btn.label}
-              </button>
-            ))}
-          </div>
+          <button
+            onClick={() => setFiltroTipo("todos")}
+            className={`px-4 py-2 rounded-lg ${filtroTipo === "todos" ? "bg-blue-600 text-white" : "bg-gray-200"}`}
+          >
+            Todos
+          </button>
+
+          <button
+            onClick={() => setFiltroTipo("ingreso")}
+            className={`px-4 py-2 rounded-lg ${filtroTipo === "ingreso" ? "bg-green-600 text-white" : "bg-gray-200"}`}
+          >
+            Ingresos
+          </button>
+
+          <button
+            onClick={() => setFiltroTipo("gasto")}
+            className={`px-4 py-2 rounded-lg ${filtroTipo === "gasto" ? "bg-red-600 text-white" : "bg-gray-200"}`}
+          >
+            Gastos
+          </button>
         </div>
       </div>
 
-      {/* Lista de Transacciones */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100">
-        <div className="p-6 border-b border-gray-100">
+      {/* Listado */}
+      <div className="bg-white rounded-xl shadow-sm border">
+        <div className="p-6 border-b">
           <h2 className="text-gray-900">Historial de Transacciones</h2>
         </div>
 
@@ -286,81 +298,49 @@ export default function Transacciones() {
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-gray-700">Fecha</th>
-                <th className="px-6 py-3 text-left text-gray-700">Subcategoría</th>
-                <th className="px-6 py-3 text-left text-gray-700">Tipo</th>
-                <th className="px-6 py-3 text-left text-gray-700">Método de Pago</th>
-                <th className="px-6 py-3 text-right text-gray-700">Monto</th>
-                <th className="px-6 py-3 text-center text-gray-700">Acciones</th>
+                <th className="px-6 py-3 text-left">Fecha</th>
+                <th className="px-6 py-3 text-left">Subcategoría</th>
+                <th className="px-6 py-3 text-left">Tipo</th>
+                <th className="px-6 py-3 text-left">Método</th>
+                <th className="px-6 py-3 text-right">Monto</th>
+                <th className="px-6 py-3 text-center">Acciones</th>
               </tr>
             </thead>
 
-            <tbody className="divide-y divide-gray-100">
-              {transaccionesFiltradas.map((transaccion) => (
-                <tr key={transaccion.id} className="hover:bg-gray-50">
+            <tbody className="divide-y">
+              {transaccionesFiltradas.map(t => (
+                <tr key={t.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4">{t.fecha}</td>
+
+                  <td className="px-6 py-4">{t.subcategoria}</td>
+
                   <td className="px-6 py-4">
-                    <span className="text-gray-900">
-                      {new Date(transaccion.fecha).toLocaleDateString("es-MX", {
-                        day: "2-digit",
-                        month: "short",
-                        year: "numeric"
-                      })}
+                    <span className={`px-3 py-1 text-sm rounded-full ${
+                      t.tipo === "ingreso"
+                        ? "bg-green-100 text-green-700"
+                        : "bg-red-100 text-red-700"
+                    }`}>
+                      {t.tipo}
                     </span>
                   </td>
 
-                  <td className="px-6 py-4">
-                    <div>
-                      <p className="text-gray-900">{transaccion.subcategoria}</p>
-                      <p className="text-gray-500 text-sm">
-                        {transaccion.categoria}
-                      </p>
-                    </div>
-                  </td>
-
-                  <td className="px-6 py-4">
-                    <span
-                      className={`px-3 py-1 rounded-full text-sm ${
-                        transaccion.tipo === "ingreso"
-                          ? "bg-green-100 text-green-700"
-                          : transaccion.tipo === "gasto"
-                          ? "bg-red-100 text-red-700"
-                          : "bg-blue-100 text-blue-700"
-                      }`}
-                    >
-                      {transaccion.tipo.charAt(0).toUpperCase() +
-                        transaccion.tipo.slice(1)}
-                    </span>
-                  </td>
-
-                  <td className="px-6 py-4">
-                    <span className="text-gray-600">
-                      {transaccion.metodoPago}
-                    </span>
-                  </td>
+                  <td className="px-6 py-4">{t.metodoPago}</td>
 
                   <td className="px-6 py-4 text-right">
-                    <span
-                      className={
-                        transaccion.tipo === "ingreso"
-                          ? "text-green-600"
-                          : "text-red-600"
-                      }
-                    >
-                      {transaccion.tipo === "ingreso" ? "+" : "-"}$
-                      {transaccion.monto.toLocaleString("es-MX")}
-                    </span>
+                    {t.tipo === "ingreso" ? "+" : "-"}${t.monto.toLocaleString("es-MX")}
                   </td>
 
                   <td className="px-6 py-4">
                     <div className="flex items-center justify-center gap-2">
                       <button
-                        onClick={() => handleOpenModal(transaccion)}
+                        onClick={() => handleOpenModal(t)}
                         className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
+
                       <button
-                        onClick={() => handleDelete(transaccion.id)}
+                        onClick={() => handleDelete(t.id)}
                         className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -373,37 +353,36 @@ export default function Transacciones() {
           </table>
 
           {transaccionesFiltradas.length === 0 && (
-            <div className="text-center py-10 text-gray-600">
-              No hay transacciones disponibles.
+            <div className="text-center py-8 text-gray-500">
+              No hay transacciones registradas.
             </div>
           )}
         </div>
       </div>
 
-      {/* Modal */}
+      {/* MODAL */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-100">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
+            <div className="p-6 border-b">
               <h2 className="text-gray-900">
                 {editingTransaccion ? "Editar Transacción" : "Nueva Transacción"}
               </h2>
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
+
               {/* Subcategoría */}
               <div>
                 <label className="block text-gray-700 mb-2">Subcategoría</label>
                 <select
-                  value={formData.subcategoria}
-                  onChange={(e) =>
-                    setFormData({ ...formData, subcategoria: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  value={formData.id_subcategoria}
+                  onChange={e => setFormData({ ...formData, id_subcategoria: Number(e.target.value) })}
+                  className="w-full px-4 py-2 border rounded-lg"
                 >
-                  {subcategoriasDisponibles.map((sub) => (
-                    <option key={sub.nombre} value={sub.nombre}>
-                      {sub.nombre} ({sub.categoria})
+                  {subcategorias.map(sub => (
+                    <option key={sub.id} value={sub.id}>
+                      {sub.nombre}
                     </option>
                   ))}
                 </select>
@@ -416,16 +395,8 @@ export default function Transacciones() {
                   <input
                     type="number"
                     value={formData.ano}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        ano: Number(e.target.value)
-                      })
-                    }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                    min="2020"
-                    max="2030"
-                    required
+                    onChange={e => setFormData({ ...formData, ano: Number(e.target.value) })}
+                    className="w-full px-4 py-2 border rounded-lg"
                   />
                 </div>
 
@@ -433,18 +404,11 @@ export default function Transacciones() {
                   <label className="block text-gray-700 mb-2">Mes</label>
                   <select
                     value={formData.mes}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        mes: Number(e.target.value)
-                      })
-                    }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    onChange={e => setFormData({ ...formData, mes: Number(e.target.value) })}
+                    className="w-full px-4 py-2 border rounded-lg"
                   >
-                    {meses.map((mes, idx) => (
-                      <option key={idx} value={idx + 1}>
-                        {mes}
-                      </option>
+                    {meses.map((m, idx) => (
+                      <option key={idx} value={idx + 1}>{m}</option>
                     ))}
                   </select>
                 </div>
@@ -453,26 +417,14 @@ export default function Transacciones() {
               {/* Monto */}
               <div>
                 <label className="block text-gray-700 mb-2">Monto</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
-                    $
-                  </span>
-                  <input
-                    type="number"
-                    value={formData.monto || ""}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        monto: Number(e.target.value)
-                      })
-                    }
-                    className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg"
-                    placeholder="0.00"
-                    min="0"
-                    step="0.01"
-                    required
-                  />
-                </div>
+                <input
+                  type="number"
+                  value={formData.monto}
+                  onChange={e => setFormData({ ...formData, monto: e.target.value })}
+                  className="w-full px-4 py-2 border rounded-lg"
+                  placeholder="0.00"
+                  required
+                />
               </div>
 
               {/* Fecha */}
@@ -481,25 +433,30 @@ export default function Transacciones() {
                 <input
                   type="date"
                   value={formData.fecha}
-                  onChange={(e) =>
-                    setFormData({ ...formData, fecha: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                  required
+                  onChange={e => {
+                    const raw = e.target.value;
+
+                    // Si viene "19/02/2025", lo re-formateamos a YYYY-MM-DD
+                    if (raw.includes("/")) {
+                      const [dia, mes, anio] = raw.split("/");
+                      const iso = `${anio}-${mes.padStart(2, "0")}-${dia.padStart(2, "0")}`;
+                      setFormData({ ...formData, fecha: iso });
+                    } else {
+                      // si viene ISO normal, lo usamos directo
+                      setFormData({ ...formData, fecha: raw });
+                    }
+                  }}
+                  className="w-full px-4 py-2 border rounded-lg"
                 />
               </div>
 
-              {/* Método de pago */}
+              {/* Método */}
               <div>
-                <label className="block text-gray-700 mb-2">
-                  Método de Pago
-                </label>
+                <label className="block text-gray-700 mb-2">Método de pago</label>
                 <select
                   value={formData.metodoPago}
-                  onChange={(e) =>
-                    setFormData({ ...formData, metodoPago: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  onChange={e => setFormData({ ...formData, metodoPago: e.target.value })}
+                  className="w-full px-4 py-2 border rounded-lg"
                 >
                   <option value="Efectivo">Efectivo</option>
                   <option value="Tarjeta de débito">Tarjeta de débito</option>
@@ -513,12 +470,9 @@ export default function Transacciones() {
                 <label className="block text-gray-700 mb-2">Descripción</label>
                 <textarea
                   value={formData.descripcion}
-                  onChange={(e) =>
-                    setFormData({ ...formData, descripcion: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  onChange={e => setFormData({ ...formData, descripcion: e.target.value })}
+                  className="w-full px-4 py-2 border rounded-lg"
                   rows={3}
-                  placeholder="Descripción de la transacción..."
                 />
               </div>
 
@@ -527,18 +481,19 @@ export default function Transacciones() {
                 <button
                   type="button"
                   onClick={handleCloseModal}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                  className="flex-1 px-4 py-2 border rounded-lg"
                 >
                   Cancelar
                 </button>
 
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg"
                 >
                   {editingTransaccion ? "Guardar Cambios" : "Registrar"}
                 </button>
               </div>
+
             </form>
           </div>
         </div>

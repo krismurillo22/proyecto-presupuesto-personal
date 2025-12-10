@@ -1,63 +1,32 @@
-import { useState } from "react";
+// src/pages/CrearPresupuesto.jsx
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+
 import { ArrowLeft, Save } from "lucide-react";
 
-export default function CrearPresupuesto() {
+import { API } from "../services/api";
+import { obtenerPresupuestoPorId } from "../services/presupuestos";
+import { obtenerSubcategorias } from "../services/subcategorias";
+
+export default function CrearPresupuesto({ user }) { 
   const navigate = useNavigate();
   const { id } = useParams();
   const isEditing = !!id;
+  const [subcategoriasCargadas, setSubcategoriasCargadas] = useState(false);
 
-  const subcategoriasDisponibles = [
-    { id: 1, nombre: "Supermercado", categoriaNombre: "Alimentación" },
-    { id: 2, nombre: "Restaurantes", categoriaNombre: "Alimentación" },
-    { id: 3, nombre: "Renta", categoriaNombre: "Vivienda" },
-    { id: 4, nombre: "Servicios", categoriaNombre: "Vivienda" },
-    { id: 5, nombre: "Gasolina", categoriaNombre: "Transporte" },
-    { id: 6, nombre: "Uber", categoriaNombre: "Transporte" },
-    { id: 7, nombre: "Netflix", categoriaNombre: "Entretenimiento" },
-    { id: 8, nombre: "Cine", categoriaNombre: "Entretenimiento" }
-  ];
-
+  // --------------------------
+  // ESTADOS
+  // --------------------------
   const [formData, setFormData] = useState({
-    nombre: isEditing ? "Presupuesto Mensual Nov 2025" : "",
-    anoInicio: 2025,
-    mesInicio: 11,
-    anoFin: 2025,
-    mesFin: 11
+    nombre: "",
+    anio_inicio: new Date().getFullYear(),
+    mes_inicio: new Date().getMonth() + 1,
+    anio_fin: new Date().getFullYear(),
+    mes_fin: new Date().getMonth() + 1,
   });
 
-  const [subcategorias, setSubcategorias] = useState(
-    subcategoriasDisponibles.map((sub) => ({
-      ...sub,
-      montoAsignado: 0
-    }))
-  );
-
-  const handleMontoChange = (id, monto) => {
-    const montoNumero = parseFloat(monto) || 0;
-    setSubcategorias(
-      subcategorias.map((sub) =>
-        sub.id === id ? { ...sub, montoAsignado: montoNumero } : sub
-      )
-    );
-  };
-
-  const montoTotal = subcategorias.reduce(
-    (sum, sub) => sum + sub.montoAsignado,
-    0
-  );
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-
-    console.log("Presupuesto guardado:", {
-      ...formData,
-      subcategorias: subcategorias.filter((s) => s.montoAsignado > 0),
-      montoTotal
-    });
-
-    navigate("/presupuestos");
-  };
+  const [subcategorias, setSubcategorias] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const meses = [
     { value: 1, label: "Enero" },
@@ -71,20 +40,191 @@ export default function CrearPresupuesto() {
     { value: 9, label: "Septiembre" },
     { value: 10, label: "Octubre" },
     { value: 11, label: "Noviembre" },
-    { value: 12, label: "Diciembre" }
+    { value: 12, label: "Diciembre" },
   ];
 
   const anos = [2024, 2025, 2026, 2027];
 
+  // --------------------------
+  // 1. CARGAR SUBCATEGORÍAS
+  // --------------------------
+  useEffect(() => {
+    obtenerSubcategorias()
+      .then((res) => {
+        setSubcategorias(
+          res.data.subcategorias.map((sub) => ({
+            id: Number(sub.ID_SUBCATEGORIA),
+            nombre: sub.NOMBRE,
+            categoriaNombre: sub.CATEGORIA,
+            montoAsignado: 0,
+          }))
+        );
+        setSubcategoriasCargadas(true);   // 🔥 ya están listas
+      })
+      .catch(console.error);
+  }, []);
+  // --------------------------
+  // 2. SI ES EDICIÓN → CARGA DATA
+  // --------------------------
+  useEffect(() => {
+    if (!isEditing || !subcategoriasCargadas) return;
+
+    async function cargarDatos() {
+      try {
+        const resPresupuesto = await obtenerPresupuestoPorId(id);
+        const p = resPresupuesto.data.presupuesto;
+
+        setFormData({
+          nombre: p.NOMBRE,
+          anio_inicio: p.ANIO_INICIO,
+          mes_inicio: p.MES_INICIO,
+          anio_fin: p.ANIO_FIN,
+          mes_fin: p.MES_FIN,
+        });
+
+        // Ahora sí cargar detalle
+        const resDetalle = await API.get(`/presupuestos/${id}/detalle`);
+        const detalles = resDetalle.data.detalle;
+
+        setSubcategorias((prev) =>
+          prev.map((sub) => {
+            const detalle = detalles.find((d) => d.ID_SUBCATEGORIA == sub.id);
+            return {
+              ...sub,
+              montoAsignado: detalle ? detalle.MONTO_MENSUAL : 0,
+            };
+          })
+        );
+
+        setLoading(false);
+      } catch (err) {
+        console.error("Error cargando presupuesto:", err);
+      }
+    }
+
+    cargarDatos();
+  }, [id, isEditing, subcategoriasCargadas]);
+
+  // 🔥 Cuando NO es edición → cerrar loading cuando ya cargaron subcategorías
+  useEffect(() => {
+    if (!isEditing && subcategoriasCargadas) {
+      setLoading(false);
+    }
+  }, [isEditing, subcategoriasCargadas]);
+
+  // --------------------------
+  // CALCULAR TOTAL
+  // --------------------------
+  const montoTotal = subcategorias.reduce(
+    (sum, sub) => sum + (parseFloat(sub.montoAsignado) || 0),
+    0
+  );
+
   const subcategoriasPorCategoria = subcategorias.reduce((acc, sub) => {
-    if (!acc[sub.categoriaNombre]) acc[sub.categoriaNombre] = [];
-    acc[sub.categoriaNombre].push(sub);
+    const categoria = sub.categoriaNombre || "Sin categoría";
+
+    if (!acc[categoria]) acc[categoria] = [];
+    acc[categoria].push(sub);
+
     return acc;
   }, {});
+  
+  // --------------------------
+  // CAMBIO DE MONTOS POR SUBCATEGORÍA
+  // --------------------------
+  const handleMontoChange = (id, monto) => {
+    const value = monto === "" ? 0 : parseFloat(monto);
 
+    setSubcategorias(subcategorias.map((sub) =>
+      sub.id === id ? { ...sub, montoAsignado: value } : sub
+    ));
+  };
+  
+  // --------------------------
+  // SUBMIT (CREAR o EDITAR)
+  // --------------------------
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    try {
+      if (!isEditing) {
+
+        // CREAR PRESUPUESTO
+        const res = await API.post("/presupuestos/set-presupuestos", {
+          id_usuario: user.id_usuario,   // ✅ antes estaba HARDCODEADO en 1
+          nombre: formData.nombre,
+          anio_inicio: formData.anio_inicio,
+          mes_inicio: formData.mes_inicio,
+          anio_fin: formData.anio_fin,
+          mes_fin: formData.mes_fin,
+          creado_por: user.email,        // (opcional, mejor que admin)
+        });
+
+        const respUltimo = await API.get(`/presupuestos/usuario/1/activo`);
+        const nuevoId = respUltimo.data.presupuesto_activo.ID_PRESUPUESTO;
+
+        // INSERTAR DETALLES
+        for (const sub of subcategorias) {
+          if (sub.montoAsignado > 0) {
+            await API.post("/presupuesto-detalle", {
+              id_presupuesto: nuevoId,
+              id_subcategoria: sub.id,
+              monto_mensual: sub.montoAsignado === 0 ? "0" : sub.montoAsignado,
+              observaciones: null,
+              creado_por: user.email,
+            });
+          }
+        }
+
+      } else {
+
+        // EDITAR
+        await API.put(`/presupuestos/${id}`, {
+          nombre: formData.nombre,
+          anio_inicio: formData.anio_inicio,
+          mes_inicio: formData.mes_inicio,
+          anio_fin: formData.anio_fin,
+          mes_fin: formData.mes_fin,
+          modificado_por: user.email,
+        });
+
+        await API.delete(`/presupuesto-detalle/presupuesto/${id}`);
+
+        for (const sub of subcategorias) {
+          if (sub.montoAsignado > 0) {
+            await API.post("/presupuesto-detalle", {
+              id_presupuesto: id,
+              id_subcategoria: sub.id,
+              monto_mensual: sub.montoAsignado === 0 ? "0" : sub.montoAsignado,
+              observaciones: null,
+              creado_por: user.email,
+            });
+          }
+        }
+      }
+
+      alert("Presupuesto guardado correctamente");
+      navigate("/presupuestos");
+
+    } catch (error) {
+      console.error("Error guardando:", error);
+      alert("Error al guardar");
+    }
+  };
+
+  // --------------------------
+  // LOADING SIMPLE
+  // --------------------------
+  if (loading) {
+    return <div className="p-6">Cargando datos...</div>;
+  }
+
+  // --------------------------
+  // RENDER
+  // --------------------------
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* HEADER */}
       <div className="flex items-center gap-4">
         <button
           onClick={() => navigate("/presupuestos")}
@@ -105,12 +245,11 @@ export default function CrearPresupuesto() {
 
       {/* FORMULARIO */}
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Datos generales */}
+        {/* INFO GENERAL */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <h2 className="text-gray-900 mb-4">Información General</h2>
 
-          <div className="grid grid-cols-1 gap-4">
-            {/* Nombre */}
+          <div className="grid gap-4">
             <div>
               <label className="block text-gray-700 mb-2">
                 Nombre del Presupuesto
@@ -121,25 +260,21 @@ export default function CrearPresupuesto() {
                 onChange={(e) =>
                   setFormData({ ...formData, nombre: e.target.value })
                 }
-                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                placeholder="Ej: Presupuesto Mensual Noviembre 2025"
+                className="w-full px-4 py-2 border rounded-lg"
                 required
               />
             </div>
 
-            {/* Fechas */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Inicio */}
+            {/* FECHAS */}
+            <div className="grid md:grid-cols-2 gap-4">
+              {/* INICIO */}
               <div>
                 <label className="block text-gray-700 mb-2">Fecha de Inicio</label>
                 <div className="grid grid-cols-2 gap-3">
                   <select
-                    value={formData.mesInicio}
+                    value={formData.mes_inicio}
                     onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        mesInicio: Number(e.target.value)
-                      })
+                      setFormData({ ...formData, mes_inicio: Number(e.target.value) })
                     }
                     className="px-4 py-2 border rounded-lg"
                   >
@@ -151,12 +286,9 @@ export default function CrearPresupuesto() {
                   </select>
 
                   <select
-                    value={formData.anoInicio}
+                    value={formData.anio_inicio}
                     onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        anoInicio: Number(e.target.value)
-                      })
+                      setFormData({ ...formData, anio_inicio: Number(e.target.value) })
                     }
                     className="px-4 py-2 border rounded-lg"
                   >
@@ -169,17 +301,14 @@ export default function CrearPresupuesto() {
                 </div>
               </div>
 
-              {/* Fin */}
+              {/* FIN */}
               <div>
                 <label className="block text-gray-700 mb-2">Fecha de Fin</label>
                 <div className="grid grid-cols-2 gap-3">
                   <select
-                    value={formData.mesFin}
+                    value={formData.mes_fin}
                     onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        mesFin: Number(e.target.value)
-                      })
+                      setFormData({ ...formData, mes_fin: Number(e.target.value) })
                     }
                     className="px-4 py-2 border rounded-lg"
                   >
@@ -191,12 +320,9 @@ export default function CrearPresupuesto() {
                   </select>
 
                   <select
-                    value={formData.anoFin}
+                    value={formData.anio_fin}
                     onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        anoFin: Number(e.target.value)
-                      })
+                      setFormData({ ...formData, anio_fin: Number(e.target.value) })
                     }
                     className="px-4 py-2 border rounded-lg"
                   >
@@ -212,9 +338,9 @@ export default function CrearPresupuesto() {
           </div>
         </div>
 
-        {/* Subcategorías (Asignación) */}
+        {/* ASIGNACIÓN */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex justify-between mb-4">
             <h2 className="text-gray-900">Asignación de Montos</h2>
 
             <div className="bg-blue-50 px-4 py-2 rounded-lg">
@@ -225,62 +351,49 @@ export default function CrearPresupuesto() {
             </div>
           </div>
 
-          <div className="space-y-6">
-            {Object.entries(subcategoriasPorCategoria).map(
-              ([categoria, lista]) => (
-                <div key={categoria}>
-                  <h3 className="text-gray-900 mb-3 pb-2 border-b">
-                    {categoria}
-                  </h3>
+          {Object.entries(subcategoriasPorCategoria).map(([categoria, lista]) => (
+            <div key={categoria}>
+              <h3 className="text-gray-900 mb-3 pb-2 border-b">{categoria}</h3>
 
-                  {lista.map((sub) => (
-                    <div
-                      key={sub.id}
-                      className="flex items-center gap-4 py-1"
-                    >
-                      <div className="flex-1">
-                        <span className="text-gray-700">{sub.nombre}</span>
-                      </div>
+              {lista.map((sub) => (
+                <div key={sub.id} className="flex items-center gap-4 py-1">
+                  <div className="flex-1">
+                    <span className="text-gray-700">{sub.nombre}</span>
+                  </div>
 
-                      <div className="w-48">
-                        <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
-                            $
-                          </span>
-                          <input
-                            type="number"
-                            value={sub.montoAsignado || ""}
-                            onChange={(e) =>
-                              handleMontoChange(sub.id, e.target.value)
-                            }
-                            className="w-full pl-8 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                            placeholder="0.00"
-                            min="0"
-                            step="0.01"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                  <div className="w-48 relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
+                      $
+                    </span>
+                      <input
+                        type="number"
+                        value={sub.montoAsignado === 0 ? "" : sub.montoAsignado}
+                        onChange={(e) => handleMontoChange(sub.id, e.target.value)}
+                        className="w-full pl-8 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                        placeholder="0.00"
+                        min="0"
+                        step="0.01"
+                      />
+                  </div>
                 </div>
-              )
-            )}
-          </div>
+              ))}
+            </div>
+          ))}
         </div>
 
-        {/* Botones */}
+        {/* BOTONES */}
         <div className="flex gap-4">
           <button
             type="button"
             onClick={() => navigate("/presupuestos")}
-            className="flex-1 px-6 py-3 border rounded-lg text-gray-700 hover:bg-gray-50"
+            className="flex-1 px-6 py-3 border rounded-lg"
           >
             Cancelar
           </button>
 
           <button
             type="submit"
-            className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700"
+            className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg"
           >
             <Save className="w-5 h-5" />
             {isEditing ? "Guardar Cambios" : "Crear Presupuesto"}
