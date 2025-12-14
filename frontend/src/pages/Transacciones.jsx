@@ -41,6 +41,19 @@ export default function Transacciones({ user }) {
     "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"
   ];
 
+  const determinarTipo = (nombreCategoria) => {
+    if (!nombreCategoria) return null;
+
+    const cat = nombreCategoria.toLowerCase();
+
+    if (cat.includes("ingreso")) return "ingreso";
+    if (cat.includes("ahorro")) return "ahorro";
+    if (cat.includes("gasto")) return "gasto";
+
+    return null;
+  };
+
+
   // 🔥 1) Cargar subcategorías + transacciones
   useEffect(() => {
     cargarSubcategorias();
@@ -53,23 +66,17 @@ export default function Transacciones({ user }) {
   const cargarSubcategorias = () => {
     obtenerSubcategorias()
       .then(res => {
-        const subs = res.data.subcategorias.map(s => ({
-          id: s.ID_SUBCATEGORIA,
-          nombre: s.NOMBRE,
-          categoriaNombre: s.CATEGORIA_NOMBRE || "",
-          tipo: s.TIPO
-        }));
-        setSubcategorias(subs);
-
-        // Cuando se cargan, poner la primera como default
-        if (subs.length > 0) {
-          setFormData(f => ({
-            ...f,
-            id_subcategoria: subs[0].id
-          }));
-        }
+        setSubcategorias(
+          res.data.subcategorias.map(s => ({
+            id: Number(s.ID_SUBCATEGORIA),
+            nombre: s.NOMBRE,
+            id_categoria: s.ID_CATEGORIA,
+            categoria: s.NOMBRE_CATEGORIA,
+            tipo: s.TIPO            // 🔥 AHORA SÍ EXISTE
+          }))
+        );
       })
-      .catch(err => console.error("Error subcategorías:", err));
+      .catch(console.error);
   };
 
   const cargarTransacciones = () => {
@@ -129,58 +136,57 @@ export default function Transacciones({ user }) {
   };
 
   // 🔥 Guardar (crear/editar)
-  const handleSubmit = (e) => {
-    e.preventDefault();
+const handleSubmit = (e) => {
+  e.preventDefault();
 
-    console.log("FECHA RAW QUE VIENE DEL INPUT:", formData.fecha); // <--- AGREGA ESTO
+  // 1️⃣ Validaciones duras
+  if (!formData.id_subcategoria) {
+    alert("Seleccione una subcategoría");
+    return;
+  }
 
-    const subInfo = subcategorias.find(s => s.id === Number(formData.id_subcategoria));
+  if (!formData.monto || Number(formData.monto) <= 0) {
+    alert("Ingrese un monto válido");
+    return;
+  }
 
-    const payload = {
-      id_usuario: user.id_usuario,
-      id_presupuesto: 2,        // <- IMPORTANTE
-      id_subcategoria: Number(formData.id_subcategoria),
-      id_obligacion: null,         // <- IMPORTANTE
-      anio: Number(formData.ano),
-      mes: Number(formData.mes),
-      tipo: subInfo.tipo,
-      descripcion: formData.descripcion,
-      monto: Number(formData.monto),
-      fecha_movimiento: formData.fecha,
-      metodo_pago: formData.metodoPago,
-      numero_factura: null,        // <- IMPORTANTE
-      observaciones: null,         // <- IMPORTANTE
-      creado_por: user.email
-    };
+  const subInfo = subcategorias.find(
+    s => s.id === Number(formData.id_subcategoria)
+  );
 
-    if (editingTransaccion) {
-      actualizarTransaccion(editingTransaccion.ID_TRANSACCION, {
-        anio: Number(formData.ano),
-        mes: Number(formData.mes),
-        descripcion: formData.descripcion,
-        monto: Number(formData.monto),
-        fecha_movimiento: formData.fecha,
-        metodo_pago: formData.metodoPago,
-        numero_factura: null,
-        observaciones: null,
-        modificado_por: user.email  // <-- IMPORTANTE
-      })
-        .then(() => {
-          cargarTransacciones();
-          handleCloseModal();
-        })
-        .catch(err => console.error("Error actualizando transacción:", err));
+  if (!subInfo || !subInfo.tipo) {
+    alert("No se pudo determinar el tipo de la transacción");
+    return;
+  }
 
-      return;
-    }
-
-    crearTransaccion(payload)
-      .then(() => {
-        cargarTransacciones();
-        handleCloseModal();
-      })
-      .catch(err => console.error("Error guardando transacción:", err));
+  const payload = {
+    id_usuario: user.id_usuario,
+    id_presupuesto: 2,
+    id_subcategoria: subInfo.id,
+    id_obligacion: null,
+    anio: Number(formData.ano),
+    mes: Number(formData.mes),
+    tipo: subInfo.tipo,   // 🔥 DIRECTO DE BD
+    descripcion: formData.descripcion,
+    monto: Number(formData.monto),
+    fecha_movimiento: formData.fecha,
+    metodo_pago: formData.metodoPago,
+    numero_factura: null,
+    observaciones: null,
+    creado_por: user.email
   };
+
+  // 3️⃣ Crear
+  crearTransaccion(payload)
+    .then(() => {
+      cargarTransacciones();
+      handleCloseModal();
+    })
+    .catch(err => {
+      console.error("ERROR BACKEND:", err.response?.data || err);
+      alert(err.response?.data?.error || "Error al guardar transacción");
+    });
+};
 
   // 🔥 Eliminar
   const handleDelete = (id) => {
@@ -377,15 +383,21 @@ export default function Transacciones({ user }) {
                 <label className="block text-gray-700 mb-2">Subcategoría</label>
                 <select
                   value={formData.id_subcategoria}
-                  onChange={e => setFormData({ ...formData, id_subcategoria: Number(e.target.value) })}
+                  onChange={e =>
+                    setFormData({ 
+                      ...formData, 
+                      id_subcategoria: Number(e.target.value) 
+                    })
+                  }
                   className="w-full px-4 py-2 border rounded-lg"
                 >
+                  <option value="">-- Seleccione --</option>
                   {subcategorias.map(sub => (
                     <option key={sub.id} value={sub.id}>
                       {sub.nombre}
                     </option>
                   ))}
-                </select>
+              </select>
               </div>
 
               {/* Año y Mes */}

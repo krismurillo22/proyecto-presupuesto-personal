@@ -646,6 +646,42 @@ const procedureStatements = [
     WHERE id_presupuesto = p_id_presupuesto;
   END
   `
+,
+  `
+  CREATE OR REPLACE PROCEDURE PRESUPUESTO.sp_abonar_meta (
+    IN p_id_meta INT,
+    IN p_monto DECIMAL(10,2),
+    IN p_modificado_por VARCHAR(100)
+  )
+  LANGUAGE SQL
+  BEGIN
+      DECLARE v_total DECIMAL(10,2);
+      DECLARE v_ahorrado DECIMAL(10,2);
+      DECLARE v_nuevo DECIMAL(10,2);
+
+      SELECT monto_total, COALESCE(monto_ahorrado,0)
+      INTO v_total, v_ahorrado
+      FROM PRESUPUESTO.META_AHORRO
+      WHERE id_meta = p_id_meta;
+
+      SET v_nuevo = v_ahorrado + p_monto;
+
+      IF v_nuevo > v_total THEN
+          SIGNAL SQLSTATE '45000'
+          SET MESSAGE_TEXT = 'El abono supera el monto objetivo';
+      END IF;
+
+      UPDATE PRESUPUESTO.META_AHORRO
+      SET monto_ahorrado = v_nuevo,
+          estado = CASE 
+              WHEN v_nuevo = v_total THEN 'completada'
+              ELSE 'en_progreso'
+          END,
+          modificado_por = p_modificado_por,
+          modificado_en = CURRENT TIMESTAMP
+      WHERE id_meta = p_id_meta;
+  END
+  `
 ];
 
 async function runProcedures(conn) {

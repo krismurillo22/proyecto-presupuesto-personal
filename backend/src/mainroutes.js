@@ -472,7 +472,16 @@ router.get('/subcategorias/get-subcategorias', (req, res) => {
         if (err) return res.status(500).json({ ok: false, error: err.message });
 
         const sql = `
-            SELECT * FROM PRESUPUESTO.SUBCATEGORIAS ORDER BY id_subcategoria ASC
+            SELECT
+            s.id_subcategoria,
+            s.nombre,
+            c.id_categoria,
+            c.nombre AS nombre_categoria,
+            c.tipo
+            FROM PRESUPUESTO.SUBCATEGORIAS s
+            INNER JOIN PRESUPUESTO.CATEGORIAS c
+            ON s.id_categoria = c.id_categoria
+            ORDER BY c.nombre, s.nombre;
         `;
 
         conn.query(sql, (err, rows) => {
@@ -1212,6 +1221,35 @@ router.delete('/metas/:id_meta', (req, res) => {
             if (err) return res.status(500).json({ ok: false, error: err.message });
 
             return res.json({ ok: true, mensaje: "Meta eliminada correctamente" });
+        });
+    });
+});
+
+// ABONAR META
+router.put('/metas/:id_meta/abonar', (req, res) => {
+    const { id_meta } = req.params;
+    const { monto, modificado_por } = req.body;
+
+    if (!monto || monto <= 0 || !modificado_por) {
+        return res.status(400).json({
+            ok: false,
+            error: "Monto y modificado_por son obligatorios"
+        });
+    }
+
+    getConnection((err, conn) => {
+        if (err) return res.status(500).json({ ok: false, error: err.message });
+
+        const sql = `CALL PRESUPUESTO.sp_abonar_meta(?,?,?)`;
+
+        conn.query(sql, [id_meta, monto, modificado_por], (err) => {
+            conn.close();
+            if (err) return res.status(500).json({ ok: false, error: err.message });
+
+            return res.json({
+                ok: true,
+                mensaje: "Abono registrado correctamente"
+            });
         });
     });
 });

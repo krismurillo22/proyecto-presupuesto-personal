@@ -1,10 +1,8 @@
-// src/pages/Obligaciones.jsx
 import { useEffect, useState } from "react";
 import {
   Plus,
   Edit2,
   Trash2,
-  Calendar,
   CheckCircle,
   XCircle,
 } from "lucide-react";
@@ -30,25 +28,28 @@ export default function Obligaciones({ user }) {
   const [formData, setFormData] = useState({
     nombre: "",
     id_subcategoria: "",
-    monto_mensual: 0,
+    monto_mensual: "",
     dia_vencimiento: 1,
     vigente: true,
   });
 
   // ---------------------------------------
-  // CARGAR SUBCATEGORÍAS + OBLIGACIONES
+  // CARGAR SUBCATEGORÍAS Y OBLIGACIONES
   // ---------------------------------------
   useEffect(() => {
     if (!userId) return;
 
-    obtenerSubcategorias().then((res) => {
-      const lista = res.data.subcategorias.map((s) => ({
-        id: s.ID_SUBCATEGORIA,
-        nombre: s.NOMBRE,
-        categoria: s.CATEGORIA,
-      }));
-      setSubcategoriasDisponibles(lista);
-    });
+    obtenerSubcategorias()
+      .then((res) => {
+        setSubcategoriasDisponibles(
+          res.data.subcategorias.map((s) => ({
+            id: Number(s.ID_SUBCATEGORIA),
+            nombre: s.NOMBRE,
+            categoria: s.CATEGORIA,
+          }))
+        );
+      })
+      .catch(console.error);
 
     cargarObligaciones();
   }, [userId]);
@@ -63,12 +64,11 @@ export default function Obligaciones({ user }) {
   };
 
   // ---------------------------------------
-  // MODAL: ABRIR / CERRAR
+  // MODAL
   // ---------------------------------------
   const handleOpenModal = (obligacion = null) => {
     if (obligacion) {
       setEditingObligacion(obligacion);
-
       setFormData({
         nombre: obligacion.NOMBRE,
         id_subcategoria: obligacion.ID_SUBCATEGORIA,
@@ -80,13 +80,12 @@ export default function Obligaciones({ user }) {
       setEditingObligacion(null);
       setFormData({
         nombre: "",
-        id_subcategoria: subcategoriasDisponibles[0]?.id || "",
-        monto_mensual: 0,
+        id_subcategoria: "",
+        monto_mensual: "",
         dia_vencimiento: 1,
         vigente: true,
       });
     }
-
     setShowModal(true);
   };
 
@@ -96,14 +95,13 @@ export default function Obligaciones({ user }) {
   };
 
   // ---------------------------------------
-  // GUARDAR / EDITAR OBLIGACIÓN
+  // GUARDAR
   // ---------------------------------------
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     try {
       if (editingObligacion) {
-        // EDITAR
         await actualizarObligacion(editingObligacion.ID_OBLIGACION, {
           nombre: formData.nombre,
           descripcion: null,
@@ -114,10 +112,9 @@ export default function Obligaciones({ user }) {
           modificado_por: user.email,
         });
       } else {
-        // CREAR
         await crearObligacion({
           id_usuario: user.id_usuario,
-          id_subcategoria: formData.id_subcategoria,
+          id_subcategoria: Number(formData.id_subcategoria),
           nombre: formData.nombre,
           descripcion: null,
           monto_mensual: Number(formData.monto_mensual),
@@ -130,46 +127,19 @@ export default function Obligaciones({ user }) {
 
       handleCloseModal();
       cargarObligaciones();
-
     } catch (err) {
-      console.error("RAW ERROR DEL BACKEND:", err.response?.data || err);
+      console.error("ERROR BACKEND:", err.response?.data || err);
       alert("Error guardando obligación");
     }
   };
+
   // ---------------------------------------
   // ELIMINAR
   // ---------------------------------------
   const handleDelete = async (id) => {
     if (!confirm("¿Eliminar obligación?")) return;
-
     await eliminarObligacion(id);
     cargarObligaciones();
-  };
-
-  // ---------------------------------------
-  // UTILIDADES
-  // ---------------------------------------
-  const getProximoPago = (dia) => {
-    const hoy = new Date();
-    let fecha = new Date(hoy.getFullYear(), hoy.getMonth(), dia);
-
-    if (fecha < hoy) {
-      fecha = new Date(hoy.getFullYear(), hoy.getMonth() + 1, dia);
-    }
-
-    return fecha.toISOString().split("T")[0];
-  };
-
-  const getDiasParaVencimiento = (fecha) => {
-    const hoy = new Date();
-    const venc = new Date(fecha);
-    return Math.ceil((venc - hoy) / (1000 * 60 * 60 * 24));
-  };
-
-  const getColorVencimiento = (dias) => {
-    if (dias < 0) return "text-red-600 bg-red-100";
-    if (dias <= 7) return "text-yellow-600 bg-yellow-100";
-    return "text-green-600 bg-green-100";
   };
 
   // ---------------------------------------
@@ -177,24 +147,23 @@ export default function Obligaciones({ user }) {
   // ---------------------------------------
   return (
     <div className="space-y-6">
-
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex justify-between items-center">
         <div>
           <h1 className="text-gray-900 mb-2">Obligaciones Fijas</h1>
-          <p className="text-gray-600">Pagos recurrentes automáticos</p>
+          <p className="text-gray-600">Pagos recurrentes</p>
         </div>
 
         <button
           onClick={() => handleOpenModal()}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg"
         >
           <Plus className="w-5 h-5" /> Nueva Obligación
         </button>
       </div>
 
-      {/* Tabla completa */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      {/* Tabla */}
+      <div className="bg-white rounded-xl border overflow-hidden">
         <table className="w-full">
           <thead className="bg-gray-50">
             <tr>
@@ -202,77 +171,58 @@ export default function Obligaciones({ user }) {
               <th className="px-6 py-3 text-left">Subcategoría</th>
               <th className="px-6 py-3 text-right">Monto</th>
               <th className="px-6 py-3 text-center">Día</th>
-              <th className="px-6 py-3 text-center">Próximo</th>
               <th className="px-6 py-3 text-center">Estado</th>
               <th className="px-6 py-3 text-center">Acciones</th>
             </tr>
           </thead>
 
           <tbody className="divide-y">
-            {obligaciones.map((o) => {
-              const proximo = getProximoPago(o.DIA_VENCIMIENTO);
-              const dias = getDiasParaVencimiento(proximo);
-
-              const categoria = subcategoriasDisponibles.find(
-                (s) => s.id === o.ID_SUBCATEGORIA
-              )?.categoria;
-
-              return (
-                <tr key={o.ID_OBLIGACION} className="hover:bg-gray-50">
-                  <td className="px-6 py-3">{o.NOMBRE}</td>
-                  <td className="px-6 py-3">
-                    {o.NOMBRE_SUBCATEGORIA}
-                    <div className="text-sm text-gray-500">{categoria}</div>
-                  </td>
-                  <td className="px-6 py-3 text-right">
-                    ${o.MONTO_MENSUAL.toLocaleString("es-MX")}
-                  </td>
-                  <td className="px-6 py-3 text-center">{o.DIA_VENCIMIENTO}</td>
-                  <td className="px-6 py-3 text-center">
-                    <span>{proximo}</span>
-                    <span
-                      className={`block mt-1 px-2 py-1 rounded-full text-xs ${getColorVencimiento(
-                        dias
-                      )}`}
-                    >
-                      {dias < 0
-                        ? "Vencida"
-                        : dias === 0
-                        ? "Hoy"
-                        : `${dias} días`}
+            {obligaciones.map((o) => (
+              <tr key={o.ID_OBLIGACION} className="hover:bg-gray-50">
+                <td className="px-6 py-3">{o.NOMBRE}</td>
+                <td className="px-6 py-3">
+                  {o.NOMBRE_SUBCATEGORIA}
+                  <div className="text-sm text-gray-500">
+                    {
+                      subcategoriasDisponibles.find(
+                        (s) => s.id === o.ID_SUBCATEGORIA
+                      )?.categoria
+                    }
+                  </div>
+                </td>
+                <td className="px-6 py-3 text-right">
+                  ${o.MONTO_MENSUAL.toLocaleString("es-MX")}
+                </td>
+                <td className="px-6 py-3 text-center">{o.DIA_VENCIMIENTO}</td>
+                <td className="px-6 py-3 text-center">
+                  {o.VIGENTE === 1 ? (
+                    <span className="text-green-600">
+                      <CheckCircle className="inline w-4 h-4" /> Vigente
                     </span>
-                  </td>
-                  <td className="px-6 py-3 text-center">
-                    {o.VIGENTE === 1 ? (
-                      <span className="text-green-600 font-medium">
-                        <CheckCircle className="w-5 h-5 inline" /> Vigente
-                      </span>
-                    ) : (
-                      <span className="text-gray-500 font-medium">
-                        <XCircle className="w-5 h-5 inline" /> Inactiva
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-6 py-3">
-                    <div className="flex justify-center gap-2">
-                      <button
-                        onClick={() => handleOpenModal(o)}
-                        className="p-2 hover:bg-blue-50 text-blue-600 rounded"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-
-                      <button
-                        onClick={() => handleDelete(o.ID_OBLIGACION)}
-                        className="p-2 hover:bg-red-50 text-red-600 rounded"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
+                  ) : (
+                    <span className="text-gray-500">
+                      <XCircle className="inline w-4 h-4" /> Inactiva
+                    </span>
+                  )}
+                </td>
+                <td className="px-6 py-3 text-center">
+                  <div className="flex justify-center gap-2">
+                    <button
+                      onClick={() => handleOpenModal(o)}
+                      className="text-blue-600"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(o.ID_OBLIGACION)}
+                      className="text-red-600"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
@@ -283,9 +233,9 @@ export default function Obligaciones({ user }) {
           subcategorias={subcategoriasDisponibles}
           formData={formData}
           setFormData={setFormData}
-          editingObligacion={editingObligacion}
           handleClose={handleCloseModal}
           handleSubmit={handleSubmit}
+          editingObligacion={editingObligacion}
         />
       )}
     </div>
@@ -293,7 +243,7 @@ export default function Obligaciones({ user }) {
 }
 
 /* -----------------------------------------------------------
-   MODAL COMPONENT
+   MODAL
 ----------------------------------------------------------- */
 function ModalObligacion({
   subcategorias,
@@ -304,22 +254,18 @@ function ModalObligacion({
   editingObligacion,
 }) {
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center p-4">
-      <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
-        <div className="p-6 border-b">
-          <h2 className="text-xl font-semibold text-gray-900">
-            {editingObligacion ? "Editar Obligación" : "Nueva Obligación"}
-          </h2>
-        </div>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white w-full max-w-lg rounded-xl p-6 shadow-xl">
+        <h2 className="text-xl font-semibold mb-6">
+          {editingObligacion ? "Editar Obligación" : "Nueva Obligación"}
+        </h2>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-
-          {/* Nombre */}
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-gray-700 mb-1">Nombre</label>
+            <label className="block mb-1 text-gray-600">Nombre</label>
             <input
               type="text"
-              className="w-full px-4 py-2 border rounded-lg"
+              className="w-full border rounded-lg p-2"
               value={formData.nombre}
               onChange={(e) =>
                 setFormData({ ...formData, nombre: e.target.value })
@@ -328,16 +274,20 @@ function ModalObligacion({
             />
           </div>
 
-          {/* Subcategoría */}
           <div>
-            <label className="block text-gray-700 mb-1">Subcategoría</label>
+            <label className="block mb-1 text-gray-600">Subcategoría</label>
             <select
-              className="w-full px-4 py-2 border rounded-lg"
+              className="w-full border rounded-lg p-2"
               value={formData.id_subcategoria}
               onChange={(e) =>
-                setFormData({ ...formData, id_subcategoria: Number(e.target.value) })
+                setFormData({
+                  ...formData,
+                  id_subcategoria: Number(e.target.value),
+                })
               }
+              required
             >
+              <option value="">Seleccione una subcategoría</option>
               {subcategorias.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.nombre} ({s.categoria})
@@ -346,32 +296,29 @@ function ModalObligacion({
             </select>
           </div>
 
-          {/* Monto */}
           <div>
-            <label className="block text-gray-700 mb-1">Monto Mensual</label>
+            <label className="block mb-1 text-gray-600">Monto Mensual</label>
             <input
               type="number"
-              className="w-full px-4 py-2 border rounded-lg"
-              value={formData.montoMensual === 0 ? "" : formData.montoMensual}
-              onChange={(e) => {
-                const val = e.target.value;
+              className="w-full border rounded-lg p-2"
+              value={formData.monto_mensual}
+              onChange={(e) =>
                 setFormData({
                   ...formData,
-                  montoMensual: val === "" ? "" : Number(val),
-                });
-              }}
-              min="0"
-              step="0.01"
+                  monto_mensual: e.target.value,
+                })
+              }
               required
             />
           </div>
 
-          {/* Día vencimiento */}
           <div>
-            <label className="block text-gray-700 mb-1">Día de vencimiento</label>
+            <label className="block mb-1 text-gray-600">Día de vencimiento</label>
             <input
               type="number"
-              className="w-full px-4 py-2 border rounded-lg"
+              min="1"
+              max="31"
+              className="w-full border rounded-lg p-2"
               value={formData.dia_vencimiento}
               onChange={(e) =>
                 setFormData({
@@ -379,13 +326,10 @@ function ModalObligacion({
                   dia_vencimiento: Number(e.target.value),
                 })
               }
-              min="1"
-              max="31"
               required
             />
           </div>
 
-          {/* Vigente */}
           <div className="flex items-center gap-2">
             <input
               type="checkbox"
@@ -397,24 +341,21 @@ function ModalObligacion({
             <span>Obligación activa</span>
           </div>
 
-          {/* BOTONES */}
-          <div className="pt-4 flex gap-3">
+          <div className="flex justify-end gap-3 pt-4">
             <button
               type="button"
+              className="px-4 py-2 border rounded-lg"
               onClick={handleClose}
-              className="flex-1 px-4 py-2 border rounded-lg hover:bg-gray-50"
             >
               Cancelar
             </button>
-
             <button
               type="submit"
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg"
             >
-              {editingObligacion ? "Guardar cambios" : "Crear Obligación"}
+              {editingObligacion ? "Guardar" : "Crear Obligación"}
             </button>
           </div>
-
         </form>
       </div>
     </div>
