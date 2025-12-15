@@ -44,6 +44,10 @@ export default function Presupuestos({ user }) {
             mes: p.MES_INICIO
           });
 
+          const ingresos = p.TOTAL_INGRESOS;
+          const presupuestoPlanificado = p.TOTAL_GASTOS + p.TOTAL_AHORROS;
+          const gastadoReal = balance.data.gastos + balance.data.ahorros;
+
           return {
             id: p.ID_PRESUPUESTO,
             nombre: p.NOMBRE,
@@ -51,8 +55,13 @@ export default function Presupuestos({ user }) {
             mesInicio: p.MES_INICIO,
             anoFin: p.ANIO_FIN,
             mesFin: p.MES_FIN,
-            montoTotal: p.TOTAL_GASTOS + p.TOTAL_AHORROS + p.TOTAL_INGRESOS,
-            gastado: balance.data.gastos + balance.data.ahorros
+
+            ingresos,
+            presupuesto: presupuestoPlanificado,
+            gastado: gastadoReal,
+
+            disponiblePresupuesto: presupuestoPlanificado - gastadoReal,
+            disponibleIngresos: ingresos - gastadoReal
           };
         })
       );
@@ -81,7 +90,10 @@ export default function Presupuestos({ user }) {
     return `${meses[p.mesInicio - 1]} ${p.anoInicio} - ${meses[p.mesFin - 1]} ${p.anoFin}`;
   };
 
-  const getPorcentaje = (p) => Math.round((p.gastado / p.montoTotal) * 100);
+  const getPorcentaje = (p) =>
+  p.presupuesto > 0
+    ? Math.round((p.gastado / p.presupuesto) * 100)
+    : 0;
 
   const getColorPorcentaje = (pct) => {
     if (pct >= 90) return "text-red-600 bg-red-100";
@@ -147,11 +159,38 @@ export default function Presupuestos({ user }) {
         </div>
       </div>
 
+      {/* Total Presupuesto Planificado */}
+      <div className="bg-white p-6 rounded-xl shadow-sm border">
+        <div className="flex items-center gap-3 mb-2">
+          <Wallet className="w-6 h-6 text-blue-600" />
+          <span className="text-gray-700">Total Presupuesto</span>
+        </div>
+        <p className="text-gray-900">
+          $
+          {presupuestos
+            .reduce((s, p) => s + p.presupuesto, 0)
+            .toLocaleString("es-MX")}
+        </p>
+      </div>
+
+      {/* Total Ingresos */}
+      <div className="bg-white p-6 rounded-xl shadow-sm border">
+        <div className="flex items-center gap-3 mb-2">
+          <TrendingUp className="w-6 h-6 text-green-600" />
+          <span className="text-gray-700">Total Ingresos</span>
+        </div>
+        <p className="text-gray-900">
+          $
+          {presupuestos
+            .reduce((s, p) => s + p.ingresos, 0)
+            .toLocaleString("es-MX")}
+        </p>
+      </div>
+
       {/* Lista */}
       <div className="space-y-4">
         {presupuestos.map((p) => {
           const pct = getPorcentaje(p);
-          const disponible = p.montoTotal - p.gastado;
 
           return (
             <div key={p.id} className="bg-white rounded-xl shadow-sm border p-6">
@@ -188,21 +227,39 @@ export default function Presupuestos({ user }) {
               </div>
 
               {/* Grid de montos */}
-              <div className="grid grid-cols-3 gap-4 mb-4">
+              <div className="grid grid-cols-5 gap-4 mb-4">
                 <div>
-                  <p className="text-gray-600 text-sm mb-1">Monto Total</p>
-                  <p className="text-gray-900">${p.montoTotal.toLocaleString("es-MX")}</p>
+                  <p className="text-gray-600 text-sm mb-1">Ingresos</p>
+                  <p className="text-gray-900">
+                    ${p.ingresos.toLocaleString("es-MX")}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-gray-600 text-sm mb-1">Presupuesto</p>
+                  <p className="text-gray-900">
+                    ${p.presupuesto.toLocaleString("es-MX")}
+                  </p>
                 </div>
 
                 <div>
                   <p className="text-gray-600 text-sm mb-1">Gastado</p>
-                  <p className="text-red-600">${p.gastado.toLocaleString("es-MX")}</p>
+                  <p className="text-red-600">
+                    ${p.gastado.toLocaleString("es-MX")}
+                  </p>
                 </div>
 
                 <div>
-                  <p className="text-gray-600 text-sm mb-1">Disponible</p>
-                  <p className={disponible >= 0 ? "text-green-600" : "text-red-600"}>
-                    ${disponible.toLocaleString("es-MX")}
+                  <p className="text-gray-600 text-sm mb-1">Disp. Presupuesto</p>
+                  <p className={p.disponiblePresupuesto >= 0 ? "text-green-600" : "text-red-600"}>
+                    ${p.disponiblePresupuesto.toLocaleString("es-MX")}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-gray-600 text-sm mb-1">Disp. Ingresos</p>
+                  <p className={p.disponibleIngresos >= 0 ? "text-green-600" : "text-red-600"}>
+                    ${p.disponibleIngresos.toLocaleString("es-MX")}
                   </p>
                 </div>
               </div>

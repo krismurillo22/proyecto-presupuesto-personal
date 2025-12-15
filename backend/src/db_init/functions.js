@@ -3,8 +3,7 @@ const functionStatements = [
   `
   CREATE OR REPLACE FUNCTION PRESUPUESTO.fn_calcular_monto_ejecutado (
     p_id_subcategoria INT,
-    p_anio            INT,
-    p_mes             INT
+    p_anio INT, p_mes INT
   )
   RETURNS DECIMAL(10,2)
   LANGUAGE SQL
@@ -14,9 +13,7 @@ const functionStatements = [
     SET v_total = (
       SELECT COALESCE(SUM(monto), 0)
       FROM PRESUPUESTO.TRANSACCIONES
-      WHERE id_subcategoria = p_id_subcategoria
-        AND anio            = p_anio
-        AND mes             = p_mes
+      WHERE id_subcategoria = p_id_subcategoria AND anio  = p_anio AND mes = p_mes
     );
 
     RETURN v_total;
@@ -28,8 +25,8 @@ const functionStatements = [
   CREATE OR REPLACE FUNCTION PRESUPUESTO.fn_calcular_porcentaje_ejecutado (
     p_id_subcategoria INT,
     p_id_presupuesto  INT,
-    p_anio            INT,
-    p_mes             INT
+    p_anio INT,
+    p_mes INT
   )
   RETURNS DECIMAL(10,2)
   LANGUAGE SQL
@@ -40,17 +37,13 @@ const functionStatements = [
     SET v_pres = (
       SELECT monto_mensual
       FROM PRESUPUESTO.PRESUPUESTO_DETALLE
-      WHERE id_subcategoria = p_id_subcategoria
-        AND id_presupuesto  = p_id_presupuesto
+      WHERE id_subcategoria = p_id_subcategoria AND id_presupuesto  = p_id_presupuesto
     );
 
     SET v_eje = (
       SELECT COALESCE(SUM(monto), 0)
       FROM PRESUPUESTO.TRANSACCIONES
-      WHERE id_subcategoria = p_id_subcategoria
-        AND id_presupuesto  = p_id_presupuesto
-        AND anio            = p_anio
-        AND mes             = p_mes
+      WHERE id_subcategoria = p_id_subcategoria AND id_presupuesto  = p_id_presupuesto AND anio = p_anio AND mes = p_mes
     );
 
     IF v_pres IS NULL OR v_pres = 0 THEN
@@ -64,11 +57,7 @@ const functionStatements = [
   // 3) fn_obtener_balance_subcategoria
   `
   CREATE OR REPLACE FUNCTION PRESUPUESTO.fn_obtener_balance_subcategoria (
-    p_id_presupuesto  INT,
-    p_id_subcategoria INT,
-    p_anio            INT,
-    p_mes             INT
-  )
+    p_id_presupuesto INT, p_id_subcategoria INT, p_anio INT, p_mes INT)
   RETURNS DECIMAL(10,2)
   LANGUAGE SQL
   BEGIN ATOMIC
@@ -78,8 +67,7 @@ const functionStatements = [
     SET v_pres = (
       SELECT monto_mensual
       FROM PRESUPUESTO.PRESUPUESTO_DETALLE
-      WHERE id_presupuesto  = p_id_presupuesto
-        AND id_subcategoria = p_id_subcategoria
+      WHERE id_presupuesto  = p_id_presupuesto AND id_subcategoria = p_id_subcategoria
     );
 
     SET v_eje = PRESUPUESTO.fn_calcular_monto_ejecutado(
@@ -106,7 +94,7 @@ const functionStatements = [
     SET v_total = (
       SELECT COALESCE(SUM(D.monto_mensual), 0)
       FROM PRESUPUESTO.PRESUPUESTO_DETALLE D
-      JOIN PRESUPUESTO.SUBCATEGORIAS S
+      INNER JOIN PRESUPUESTO.SUBCATEGORIAS S
         ON S.id_subcategoria = D.id_subcategoria
       WHERE S.id_categoria   = p_id_categoria
         AND D.id_presupuesto = p_id_presupuesto
@@ -120,8 +108,8 @@ const functionStatements = [
   `
   CREATE OR REPLACE FUNCTION PRESUPUESTO.fn_obtener_total_ejecutado_categoria_mes (
     p_id_categoria INT,
-    p_anio         INT,
-    p_mes          INT
+    p_anio INT,
+    p_mes INT
   )
   RETURNS DECIMAL(10,2)
   LANGUAGE SQL
@@ -131,11 +119,9 @@ const functionStatements = [
     SET v_total = (
       SELECT COALESCE(SUM(T.monto), 0)
       FROM PRESUPUESTO.TRANSACCIONES T
-      JOIN PRESUPUESTO.SUBCATEGORIAS S
+      INNER JOIN PRESUPUESTO.SUBCATEGORIAS S
         ON S.id_subcategoria = T.id_subcategoria
-      WHERE S.id_categoria = p_id_categoria
-        AND T.anio        = p_anio
-        AND T.mes         = p_mes
+      WHERE S.id_categoria = p_id_categoria AND T.anio = p_anio AND T.mes = p_mes
     );
 
     RETURN v_total;
@@ -291,9 +277,7 @@ const functionStatements = [
     SET v_total = (
       SELECT COALESCE(SUM(monto), 0)
       FROM PRESUPUESTO.TRANSACCIONES
-      WHERE id_usuario     = p_id_usuario
-        AND id_subcategoria = p_id_subcategoria
-        AND fecha_movimiento >= (CURRENT_DATE - (p_meses * 30) DAYS)
+      WHERE id_usuario = p_id_usuario AND id_subcategoria = p_id_subcategoria AND fecha_movimiento >= (CURRENT_DATE - (p_meses * 30) DAYS)
     );
 
     IF p_meses = 0 THEN

@@ -314,13 +314,11 @@ router.delete('/presupuestos/:id', (req, res) => {
             return res.status(500).json({ ok: false, error: err.message });
         }
 
-        // 1️⃣ Eliminar detalles primero
         const sqlEliminarDetalles = `
             DELETE FROM PRESUPUESTO.PRESUPUESTO_DETALLE
             WHERE id_presupuesto = ?
         `;
 
-        // 2️⃣ Luego eliminar el presupuesto
         const sqlEliminarPresupuesto = `
             DELETE FROM PRESUPUESTO.PRESUPUESTOS
             WHERE id_presupuesto = ?
@@ -329,7 +327,7 @@ router.delete('/presupuestos/:id', (req, res) => {
         conn.query(sqlEliminarDetalles, [id], (err) => {
             if (err) {
                 conn.close();
-                console.error("❌ Error eliminando detalles:", err);
+                console.error("Error eliminando detalles:", err);
                 return res.status(500).json({
                     ok: false,
                     error: "Error eliminando detalles del presupuesto"
@@ -340,7 +338,7 @@ router.delete('/presupuestos/:id', (req, res) => {
                 conn.close();
 
                 if (err2) {
-                    console.error("❌ Error eliminando presupuesto:", err2);
+                    console.error("Error eliminando presupuesto:", err2);
                     return res.status(500).json({
                         ok: false,
                         error: "Error eliminando el presupuesto"
@@ -1274,9 +1272,9 @@ router.get('/reportes/gastos-por-categoria', (req, res) => {
                 c.nombre AS categoria,
                 COALESCE(SUM(t.monto), 0) AS total_gastado
             FROM PRESUPUESTO.TRANSACCIONES t
-            JOIN PRESUPUESTO.SUBCATEGORIAS s 
+            INNER JOIN PRESUPUESTO.SUBCATEGORIAS s 
                 ON t.id_subcategoria = s.id_subcategoria
-            JOIN PRESUPUESTO.CATEGORIAS c 
+            INNER JOIN PRESUPUESTO.CATEGORIAS c 
                 ON s.id_categoria = c.id_categoria
             WHERE 
                 t.id_usuario = ?
