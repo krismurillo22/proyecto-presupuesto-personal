@@ -15,7 +15,6 @@ INSERT INTO USUARIOS (
 SELECT IDENTITY_VAL_LOCAL() AS id_usuario FROM SYSIBM.SYSDUMMY1;
 
 -- CATEGORÍAS
-------------------------------------------------------------
 INSERT INTO CATEGORIAS (nombre, descripcion, tipo, nombre_icono, color_hex, orden_presentacion, creado_por, creado_en)
 VALUES
 ('Ingresos', 'Entradas de dinero mensuales', 'ingreso', 'icon_ingreso', '#4CAF50', 1, 'seed', CURRENT_TIMESTAMP),
@@ -25,7 +24,6 @@ VALUES
 
 
 -- SUBCATEGORÍAS
-------------------------------------------------------------
 -- Ingresos
 INSERT INTO SUBCATEGORIAS (id_categoria, nombre, descripcion, activa, es_defecto, creado_por, creado_en)
 VALUES
@@ -54,7 +52,6 @@ VALUES
 (4, 'Fondo de Emergencias', 'Ahorro para imprevistos', 1, 0, 'seed', CURRENT_TIMESTAMP);
 
 -- PRESUPUESTOS (Enero Y Febrero 2025)
-------------------------------------------------------------
 INSERT INTO PRESUPUESTOS (
     id_usuario, nombre, anio_inicio, mes_inicio, anio_fin, mes_fin,
     total_ingresos, total_gastos, total_ahorros, fecha_creacion, estado,
@@ -71,7 +68,6 @@ VALUES
 -- Febrero = 2
 
 -- PRESUPUESTO DETALLE
-------------------------------------------------------------
 INSERT INTO PRESUPUESTO_DETALLE (id_presupuesto, id_subcategoria, monto_mensual, creado_por, creado_en)
 VALUES
 -- Enero
@@ -99,7 +95,6 @@ VALUES
 (2, 11, 900, 'seed', CURRENT_TIMESTAMP);
 
 -- OBLIGACIONES FIJAS
-------------------------------------------------------------
 INSERT INTO OBLIGACION_FIJA ( id_usuario, id_subcategoria, nombre, descripcion, monto_mensual,
      dia_vencimiento, vigente, fecha_inicio, fecha_fin, creado_por, creado_en)
 VALUES
@@ -110,7 +105,6 @@ VALUES
 
 
 -- METAS DE AHORRO
-------------------------------------------------------------
 INSERT INTO META_AHORRO (id_usuario, id_subcategoria, nombre, descripcion, monto_total, monto_ahorrado, fecha_inicio, fecha_objetivo,
     prioridad, estado, creado_por, creado_en)
 VALUES
@@ -119,7 +113,6 @@ VALUES
 
 
 -- TRANSACCIONES - Enero 2025
-------------------------------------------------------------
 INSERT INTO TRANSACCIONES (id_usuario, id_presupuesto, id_subcategoria, id_obligacion, anio, mes, tipo, descripcion, monto, fecha_movimiento,
     metodo_pago, numero_factura, observaciones, fecha_registro, creado_por, creado_en)
 VALUES
@@ -142,7 +135,6 @@ VALUES
 (1, 1, 11, NULL, 2025, 1, 'ahorro', 'Fondo de emergencias', 600, '2025-01-18', 'transferencia', NULL, NULL, CURRENT_TIMESTAMP, 'seed', CURRENT_TIMESTAMP);
 
 -- TRANSACCIONES - Febrero 2025
-------------------------------------------------------------
 INSERT INTO TRANSACCIONES (id_usuario, id_presupuesto, id_subcategoria, id_obligacion,
     anio, mes, tipo, descripcion, monto, fecha_movimiento, metodo_pago, numero_factura, observaciones, fecha_registro, creado_por, creado_en)
 VALUES

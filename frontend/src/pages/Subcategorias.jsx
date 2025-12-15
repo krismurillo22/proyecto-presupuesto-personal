@@ -117,14 +117,14 @@ export default function Subcategorias({ user }) {
       nombre: formData.nombre,
       descripcion: formData.descripcion,
       es_defecto: 0,
-      creado_por: user.email,         // 🔥 aquí
+      creado_por: user.email,         
     };
 
     if (editingSubcategoria) {
       actualizarSubcategoria(editingSubcategoria.id, {
         nombre: formData.nombre,
         descripcion: formData.descripcion,
-        modificado_por: user.email,   // 🔥 aquí
+        modificado_por: user.email,   
       })
         .then(() => {
           cargarSubcategorias();

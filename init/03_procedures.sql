@@ -1,7 +1,5 @@
 
 -- CRUD USUARIOS
-------------------------------------------------------------
-
 -- Insertar 
 CREATE OR REPLACE PROCEDURE sp_insertar_usuario (IN p_nombres VARCHAR(100), IN p_apellidos VARCHAR(100),
     IN p_correo VARCHAR(150), IN p_salario_base DECIMAL(10,2), IN p_creado_por VARCHAR(100))
@@ -51,8 +49,6 @@ END@
 
 
 -- CRUD CATEGORIAS
-------------------------------------------------------------
-
 -- Insertar
 CREATE OR REPLACE PROCEDURE sp_insertar_categoria ( IN p_nombre VARCHAR(100), IN p_descripcion CLOB, IN p_tipo VARCHAR(20),
     IN p_nombre_icono CLOB, IN p_color_hex VARCHAR(10), IN p_orden INT, IN p_creado_por VARCHAR(100))
@@ -99,7 +95,6 @@ END@
 
 
 -- CRUD SUBCATEGORIAS
--------------------------------------
 -- Insertar
 CREATE OR REPLACE PROCEDURE sp_insertar_subcategoria ( IN p_id_categoria INT, IN p_nombre VARCHAR(100), IN p_descripcion CLOB,
     IN p_es_defecto SMALLINT, IN p_creado_por VARCHAR(100))
@@ -147,8 +142,6 @@ END@
 
 
 -- CRUD PRESUPUESTOS
-------------------------------------------------------------
-
 -- Insertar
 CREATE OR REPLACE PROCEDURE sp_insertar_presupuesto ( IN p_id_usuario INT, IN p_nombre VARCHAR(100), IN p_anio_inicio INT, IN p_mes_inicio INT,
     IN p_anio_fin INT, IN p_mes_fin INT, IN p_creado_por VARCHAR(100))
@@ -199,8 +192,6 @@ END@
 
 
 -- CRUD PRESUPUESTO_DETALLE
-------------------------------------------------------------
-
 -- Insertar
 CREATE OR REPLACE PROCEDURE sp_insertar_presupuesto_detalle ( IN p_id_presupuesto INT, IN p_id_subcategoria INT,
     IN p_monto DECIMAL(10,2), IN p_observaciones CLOB, IN p_creado_por VARCHAR(100))
@@ -248,8 +239,6 @@ END@
 
 
 -- CRUD OBLIGACION_FIJA
-------------------------------------------------------------
-
 -- Insertar
 CREATE OR REPLACE PROCEDURE sp_insertar_obligacion ( IN p_id_usuario INT, IN p_id_subcategoria INT, IN p_nombre VARCHAR(100),
     IN p_descripcion CLOB, IN p_monto DECIMAL(10,2), IN p_dia_venc INT, IN p_fecha_inicio TIMESTAMP, IN p_fecha_fin TIMESTAMP, IN p_creado_por VARCHAR(100))
@@ -304,8 +293,6 @@ END@
 
 
 -- CRUD TRANSACCIONES
-------------------------------------------------------------
-
 -- Insertar
 CREATE OR REPLACE PROCEDURE sp_insertar_transaccion ( IN p_id_usuario INT, IN p_id_presupuesto INT, IN p_id_subcategoria INT, IN p_id_obligacion INT,
     IN p_anio INT, IN p_mes INT, IN p_tipo VARCHAR(20), IN p_descripcion CLOB, IN p_monto DECIMAL(10,2), IN p_fecha TIMESTAMP,
@@ -363,8 +350,6 @@ END@
 
 
 -- CRUD META_AHORRO
-------------------------------------------------------------
-
 -- Insertar
 CREATE OR REPLACE PROCEDURE sp_insertar_meta ( IN p_id_usuario INT, IN p_id_subcategoria INT, IN p_nombre VARCHAR(100), IN p_descripcion CLOB,
     IN p_monto_total DECIMAL(10,2), IN p_fecha_inicio TIMESTAMP, IN p_fecha_objetivo TIMESTAMP, IN p_prioridad VARCHAR(20), IN p_creado_por VARCHAR(100))
@@ -419,7 +404,6 @@ END@
 
 
 -- PROCEDIMIENTOS
-----------------------------
 --sp_crear_presupuesto_completo
 
 -- Registrar transaccion completa

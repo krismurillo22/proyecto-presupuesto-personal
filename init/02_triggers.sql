@@ -1,6 +1,3 @@
---#SET TERMINATOR @
-
--- TRIGGER #1: Crear subcategoría por defecto al insertar categoría
 CREATE TRIGGER trg_categoria_crear_subcategoria
 AFTER INSERT ON CATEGORIAS
 REFERENCING NEW AS N
@@ -12,17 +9,15 @@ BEGIN ATOMIC
     )
     VALUES (
         N.id_categoria,
-        N.nombre,                      -- mismo nombre de categoría
+        N.nombre,                      
         'Subcategoría generada por defecto',
-        1,                             -- activa
-        1,                             -- es por defecto
+        1,                             
+        1,                             
         N.creado_por,
         CURRENT_TIMESTAMP
     );
 END@
 
-
--- TRIGGER #2: Sumar monto a META_AHORRO cuando se inserta una transacción de tipo "ahorro"
 CREATE TRIGGER trg_transaccion_meta_ahorro
 AFTER INSERT ON TRANSACCIONES
 REFERENCING NEW AS N
@@ -30,13 +25,9 @@ FOR EACH ROW
 WHEN (N.tipo = 'ahorro')
 BEGIN ATOMIC
     
-    -- Actualiza el monto acumulado asociado a la subcategoría
     UPDATE META_AHORRO
     SET monto_ahorrado = monto_ahorrado + N.monto,
         modificado_en = CURRENT_TIMESTAMP
     WHERE id_subcategoria = N.id_subcategoria;
 
 END@
-
--- Restaurar terminador
---#SET TERMINATOR ;

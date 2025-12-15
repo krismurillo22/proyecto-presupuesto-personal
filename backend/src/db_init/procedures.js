@@ -447,7 +447,6 @@ const procedureStatements = [
   END
   `,
 
-  // --- PROCEDIMIENTOS de lógica de negocio ---
   `
   CREATE OR REPLACE PROCEDURE PRESUPUESTO.sp_registrar_transaccion_completa (
     IN p_id_usuario     INT,

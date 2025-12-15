@@ -1,6 +1,3 @@
-// src/runSeed.js
-
-// Seed de datos de prueba (lo mismo que tu 05_seed.sql)
 const seedSql = `
 -- Crear usuario principal
 INSERT INTO USUARIOS (

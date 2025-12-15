@@ -166,7 +166,7 @@ const handleSubmit = (e) => {
     id_obligacion: null,
     anio: Number(formData.ano),
     mes: Number(formData.mes),
-    tipo: subInfo.tipo,   // 🔥 DIRECTO DE BD
+    tipo: subInfo.tipo,  
     descripcion: formData.descripcion,
     monto: Number(formData.monto),
     fecha_movimiento: formData.fecha,

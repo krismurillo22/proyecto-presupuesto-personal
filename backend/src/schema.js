@@ -1,8 +1,4 @@
-// ⬅️ AJUSTA ESTA RUTA SEGÚN TU ESTRUCTURA
-// Si este archivo está en src/db_init/schema.js y dbconfig.js está en src/dbconfig.js:
 const { getConnection } = require('./dbconfig');
-// Si en tu caso schema.js y dbconfig.js están en la MISMA carpeta, cambia a:
-// const { getConnection } = require('./dbconfig');
 
 const schemaSql = `
 CREATE SCHEMA PRESUPUESTO AUTHORIZATION DB2INST1;
@@ -218,7 +214,6 @@ async function runSchema() {
       }
 
       try {
-        // Quitamos comentarios y partimos por ';'
         const cleaned = schemaSql
           .split('\n')
           .filter(line => !line.trim().startsWith('--'))
@@ -238,7 +233,6 @@ async function runSchema() {
               if (err) {
                 const msg = String(err.message || err);
 
-                // Si el objeto ya existe (schema/tabla/constraint), lo ignoramos
                 if (msg.includes('SQL0601N')) {
                   console.warn('⚠️ Objeto ya existe, se omite error:', msg);
                   return res();

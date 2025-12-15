@@ -1,5 +1,3 @@
---#SET TERMINATOR @
-
 --Calcular el monto ejecutado
 CREATE OR REPLACE FUNCTION fn_calcular_monto_ejecutado (p_id_subcategoria INT, p_anio INT, p_mes INT)
 RETURNS DECIMAL(10,2)
@@ -188,5 +186,3 @@ BEGIN ATOMIC
     RETURN total / p_meses;
 END@
 
--- Restaurar terminador
---#SET TERMINATOR ;
