@@ -133,10 +133,10 @@ export default function Presupuestos({ user }) {
         <div className="bg-white p-6 rounded-xl shadow-sm border">
           <div className="flex items-center gap-3 mb-2">
             <Wallet className="w-6 h-6 text-blue-600" />
-            <span className="text-gray-700">Total Presupuestado</span>
+            <span className="text-gray-700">Total Presupuesto</span>
           </div>
           <p className="text-gray-900">
-            ${presupuestos.reduce((s, p) => s + p.montoTotal, 0).toLocaleString("es-MX")}
+            ${presupuestos.reduce((s, p) => s + p.presupuesto, 0).toLocaleString("es-MX")}
           </p>
         </div>
 
@@ -157,20 +157,6 @@ export default function Presupuestos({ user }) {
           </div>
           <p className="text-gray-900">{presupuestos.length}</p>
         </div>
-      </div>
-
-      {/* Total Presupuesto Planificado */}
-      <div className="bg-white p-6 rounded-xl shadow-sm border">
-        <div className="flex items-center gap-3 mb-2">
-          <Wallet className="w-6 h-6 text-blue-600" />
-          <span className="text-gray-700">Total Presupuesto</span>
-        </div>
-        <p className="text-gray-900">
-          $
-          {presupuestos
-            .reduce((s, p) => s + p.presupuesto, 0)
-            .toLocaleString("es-MX")}
-        </p>
       </div>
 
       {/* Total Ingresos */}
